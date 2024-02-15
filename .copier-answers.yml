@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v4.2.5
+_src_path: https://github.com/jupyterlab/extension-template
+author_email: ''
+author_name: JupyterLite Contributors
+data_format: string
+file_extension: ''
+has_binder: false
+has_settings: false
+kind: frontend
+labextension_name: '@jupyterlite/javascript-kernel'
+mimetype: ''
+mimetype_name: ''
+project_short_description: A JavaScript kernel for JupyterLite
+python_name: jupyterlite_javascript_kernel
+repository: https://github.com/jupyterlite/javascript-kernel
+test: false
+viewer_name: ''
+
