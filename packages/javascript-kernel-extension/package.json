@@ -1,6 +1,6 @@
 {
   "name": "@jupyterlite/javascript-kernel-extension",
-  "version": "0.2.3",
+  "version": "0.3.0-alpha.0",
   "description": "JupyterLite - JavaScript Kernel Extension",
   "homepage": "https://github.com/jupyterlite/javascript-kernel",
   "bugs": {
@@ -39,7 +39,7 @@
     "watch:src": "tsc -w"
   },
   "dependencies": {
-    "@jupyterlite/javascript-kernel": "^0.2.1",
+    "@jupyterlite/javascript-kernel": "^0.3.0-alpha.0",
     "@jupyterlite/kernel": "^0.2.1",
     "@jupyterlite/server": "^0.2.1"
   },
