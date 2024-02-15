@@ -4,6 +4,8 @@
 
 A JavaScript kernel for JupyterLite.
 
+![a screenshot showing a notebook with the JavaScript kernel in JupyterLite](https://github.com/jupyterlite/javascript-kernel/assets/591645/c9085a6e-452e-4f77-8553-36133ee32389)
+
 ## Requirements
 
 - JupyterLite >=0.3.0
