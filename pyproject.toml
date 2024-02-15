@@ -63,6 +63,9 @@ build_dir = "jupyterlite_javascript_kernel/labextension"
 [tool.jupyter-releaser.options]
 version_cmd = "hatch version"
 
+[tool.jupyter-releaser.options]
+version_cmd = "python scripts/bump-version.py"
+
 [tool.jupyter-releaser.hooks]
 before-build-npm = [
     "python -m pip install 'jupyterlab>=4.1.1,<4.2'",
