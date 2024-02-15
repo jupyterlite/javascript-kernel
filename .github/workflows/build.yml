@@ -121,6 +121,7 @@ jobs:
     needs: build_pages
     if: github.ref == 'refs/heads/main'
     permissions:
+      contents: read
       pages: write
       id-token: write
 
