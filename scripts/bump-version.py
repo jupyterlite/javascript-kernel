@@ -9,7 +9,7 @@ parser.add_argument("version")
 args = parser.parse_args()
 version = args.version
 
-run(f'jlpm run bump:js:version {version}', shell=True, check=True)
+cmd = f"npx lerna@6 version --no-git-tag-version --no-push --force-publish --yes {version}"
 
 root = Path(__file__).parent.parent
 version_file = root / "packages" / "javascript-kernel-extension" / "package.json"
