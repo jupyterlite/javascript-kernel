@@ -119,3 +119,7 @@ dmypy.json
 
 # Yarn cache
 .yarn/
+
+# JupyterLite generated files
+.jupyterlite.doit.db
+_output

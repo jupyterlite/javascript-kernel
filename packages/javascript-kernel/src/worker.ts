@@ -13,11 +13,11 @@ export class JavaScriptRemoteKernel {
     console.log = function (...args) {
       const bundle = {
         name: 'stdout',
-        text: args.join(' ') + '\n',
+        text: args.join(' ') + '\n'
       };
       postMessage({
         type: 'stream',
-        bundle,
+        bundle
       });
     };
     // eslint-disable-next-line no-console
@@ -26,11 +26,11 @@ export class JavaScriptRemoteKernel {
     console.error = function (...args) {
       const bundle = {
         name: 'stderr',
-        text: args.join(' ') + '\n',
+        text: args.join(' ') + '\n'
       };
       postMessage({
         type: 'stream',
-        bundle,
+        bundle
       });
     };
     console.warn = console.error;
@@ -58,35 +58,35 @@ export class JavaScriptRemoteKernel {
       const bundle: KernelMessage.IExecuteResultMsg['content'] = {
         data,
         metadata: {},
-        execution_count: this._executionCount,
+        execution_count: this._executionCount
       };
       postMessage({
         bundle,
-        type: 'execute_result',
+        type: 'execute_result'
       });
 
       return {
         status: 'ok',
-        user_expressions: {},
+        user_expressions: {}
       };
     } catch (e) {
       const { name, stack, message } = e as any as Error;
       const bundle = {
         ename: name,
         evalue: message,
-        traceback: [`${stack}`],
+        traceback: [`${stack}`]
       };
 
       postMessage({
         bundle,
-        type: 'execute_error',
+        type: 'execute_error'
       });
 
       return {
         status: 'error',
         ename: name,
         evalue: message,
-        traceback: [`${stack}`],
+        traceback: [`${stack}`]
       };
     }
   }
@@ -101,14 +101,14 @@ export class JavaScriptRemoteKernel {
     const { code, cursor_pos } = content;
     const words = code.slice(0, cursor_pos).match(/(\w+)$/) ?? [];
     const word = words[0] ?? '';
-    const matches = vars.filter((v) => v.startsWith(word));
+    const matches = vars.filter(v => v.startsWith(word));
 
     return {
       matches,
       cursor_start: cursor_pos - word.length,
       cursor_end: cursor_pos,
       metadata: {},
-      status: 'ok',
+      status: 'ok'
     };
   }
 

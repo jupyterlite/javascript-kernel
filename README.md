@@ -1,18 +1,21 @@
-# jupyterlite_javascript_kernel
+# jupyterlite-javascript-kernel
 
 [![Github Actions Status](https://github.com/jupyterlite/javascript-kernel/workflows/Build/badge.svg)](https://github.com/jupyterlite/javascript-kernel/actions/workflows/build.yml)
-A JavaScript kernel for JupyterLite
+
+A JavaScript kernel for JupyterLite.
 
 ## Requirements
 
-- JupyterLab >= 4.0.0
+- JupyterLite >=0.3.0
+
+This kernel was originally maintained as part of the main JupyterLite repository, and was moved to its own repository for the JupyterLite 0.3.0 release.
 
 ## Install
 
 To install the extension, execute:
 
 ```bash
-pip install jupyterlite_javascript_kernel
+pip install jupyterlite-javascript-kernel
 ```
 
 ## Uninstall
@@ -20,7 +23,7 @@ pip install jupyterlite_javascript_kernel
 To remove the extension, execute:
 
 ```bash
-pip uninstall jupyterlite_javascript_kernel
+pip uninstall jupyterlite-javascript-kernel
 ```
 
 ## Contributing
@@ -35,7 +38,7 @@ The `jlpm` command is JupyterLab's pinned version of
 
 ```bash
 # Clone the repo to your local environment
-# Change directory to the jupyterlite_javascript_kernel directory
+# Change directory to the jupyterlite-javascript-kernel directory
 # Install package in development mode
 pip install -e "."
 # Link your development version of the extension with JupyterLab
@@ -64,7 +67,7 @@ jupyter lab build --minimize=False
 ### Development uninstall
 
 ```bash
-pip uninstall jupyterlite_javascript_kernel
+pip uninstall jupyterlite-javascript-kernel
 ```
 
 In development mode, you will also need to remove the symlink created by `jupyter labextension develop`

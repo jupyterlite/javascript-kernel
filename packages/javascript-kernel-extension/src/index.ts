@@ -1,13 +1,18 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { PageConfig, URLExt } from '@jupyterlab/coreutils';
-
-import { JupyterLiteServer, JupyterLiteServerPlugin } from '@jupyterlite/server';
+import {
+  JupyterLiteServer,
+  JupyterLiteServerPlugin
+} from '@jupyterlite/server';
 
 import { IKernel, IKernelSpecs } from '@jupyterlite/kernel';
 
 import { JavaScriptKernel } from '@jupyterlite/javascript-kernel';
+
+import jsLogo32 from '../style/icons/logo-32x32.png';
+
+import jsLogo64 from '../style/icons/logo-64x64.png';
 
 /**
  * A plugin to register the JavaScript kernel.
@@ -17,7 +22,6 @@ const kernel: JupyterLiteServerPlugin<void> = {
   autoStart: true,
   requires: [IKernelSpecs],
   activate: (app: JupyterLiteServer, kernelspecs: IKernelSpecs) => {
-    const baseUrl = PageConfig.getBaseUrl();
     kernelspecs.register({
       spec: {
         name: 'javascript',
@@ -25,15 +29,15 @@ const kernel: JupyterLiteServerPlugin<void> = {
         language: 'javascript',
         argv: [],
         resources: {
-          'logo-32x32': '',
-          'logo-64x64': URLExt.join(baseUrl, '/kernelspecs/javascript.svg'),
-        },
+          'logo-32x32': jsLogo32,
+          'logo-64x64': jsLogo64
+        }
       },
       create: async (options: IKernel.IOptions): Promise<IKernel> => {
         return new JavaScriptKernel(options);
-      },
+      }
     });
-  },
+  }
 };
 
 const plugins: JupyterLiteServerPlugin<any>[] = [kernel];

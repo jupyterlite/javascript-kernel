@@ -1,7 +1,7 @@
 {
     "name": "@jupyterlite/javascript-kernel-root",
     "private": true,
-    "version": "0.1.0",
+    "version": "0.2.3",
     "description": "A JavaScript kernel for JupyterLite",
     "keywords": [
         "jupyter",
@@ -14,55 +14,44 @@
     },
     "license": "BSD-3-Clause",
     "author": "JupyterLite Contributors",
-    "files": [
-        "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
-        "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
-        "src/**/*.{ts,tsx}"
-    ],
-    "main": "lib/index.js",
-    "types": "lib/index.d.ts",
-    "style": "style/index.css",
     "repository": {
         "type": "git",
         "url": "https://github.com/jupyterlite/javascript-kernel.git"
     },
-"workspaces": {
-    "packages": [
-      "packages/*"
-    ]
-  },
-  "scripts": {
-    "build": "lerna run build",
-    "build:prod": "lerna run build:prod",
-    "build:test": "lerna run build:test",
-    "bump:js:version": "lerna version --no-push --force-publish --no-git-tag-version --yes",
-    "clean": "lerna run clean",
-    "install": "lerna bootstrap",
-    "install:dev": "yarn run build:prod && yarn run develop",
-    "install:extension": "jupyter labextension develop --overwrite .",
-    "eslint": "eslint . --ext .ts,.tsx --fix",
-    "eslint:check": "eslint . --ext .ts,.tsx",
-    "lint": "yarn run eslint && yarn run prettier",
-    "lint:check": "yarn run eslint:check && yarn run prettier:check",
-    "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
-    "prettier:check": "prettier --list-different \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
-    "publish": "yarn run clean && yarn run build && lerna publish",
-    "test": "lerna run test",
-    "watch": "lerna run watch"
-  },
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.32.0",
-    "@typescript-eslint/parser": "^4.32.0",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "lerna": "^6.4.1",
-    "lint-staged": "^10.4.0",
-    "npm-run-all": "^4.1.5",
-    "prettier": "^2.4.1",
-    "rimraf": "^3.0.2",
-    "shell-quote": "^1.7.2"
-  },
+    "workspaces": {
+        "packages": [
+            "packages/*"
+        ]
+    },
+    "scripts": {
+        "build": "lerna run build",
+        "build:prod": "lerna run build:prod",
+        "build:test": "lerna run build:test",
+        "bump:js:version": "lerna version --no-push --force-publish --no-git-tag-version --yes",
+        "clean": "lerna run clean",
+        "install": "lerna bootstrap",
+        "install:dev": "yarn run build:prod && yarn run develop",
+        "install:extension": "jupyter labextension develop --overwrite .",
+        "eslint": "eslint . --ext .ts,.tsx --fix",
+        "eslint:check": "eslint . --ext .ts,.tsx",
+        "lint": "yarn run eslint && yarn run prettier",
+        "lint:check": "yarn run eslint:check && yarn run prettier:check",
+        "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
+        "prettier:check": "prettier --list-different \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
+        "publish": "yarn run clean && yarn run build && lerna publish",
+        "test": "lerna run test",
+        "watch": "lerna run watch"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^6",
+        "@typescript-eslint/parser": "^6",
+        "eslint": "^8",
+        "eslint-config-prettier": "^8",
+        "eslint-plugin-prettier": "^5",
+        "lerna": "^6.4.1",
+        "prettier": "^3",
+        "rimraf": "^3.0.2"
+    },
     "eslintIgnore": [
         "node_modules",
         "dist",
@@ -78,7 +67,7 @@
         ],
         "parser": "@typescript-eslint/parser",
         "parserOptions": {
-            "project": "tsconfig.json",
+            "project": "tsconfig.eslint.json",
             "sourceType": "module"
         },
         "plugins": [

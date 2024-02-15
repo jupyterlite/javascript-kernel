@@ -5,15 +5,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*"],
-  "references": [
-    {
-      "path": "../../packages/kernel"
-    },
-    {
-      "path": "../../packages/javascript-kernel"
-    },
-    {
-      "path": "../../packages/server"
-    }
-  ]
+  "references": [{ "path": "../javascript-kernel" }]
 }

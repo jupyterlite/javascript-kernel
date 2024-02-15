@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-nodejs-version>=0.3.2"]
+requires = ["hatchling>=1.5.0", "jupyterlab>=4.1.1,<4.2", "hatch-nodejs-version>=0.3.2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -61,15 +61,16 @@ source_dir = "src"
 build_dir = "jupyterlite_javascript_kernel/labextension"
 
 [tool.jupyter-releaser.options]
-version_cmd = "hatch version"
+version_cmd = "python scripts/bump-version.py"
 
 [tool.jupyter-releaser.hooks]
+before-bump-version = ["python -m pip install 'jupyterlab>=4.1.1,<4.2'", "jlpm"]
 before-build-npm = [
-    "python -m pip install 'jupyterlab>=4.0.0,<5'",
-    "jlpm",
+    "python -m pip install 'jupyterlab>=4.1.1,<4.2'",
+    "jlpm clean",
     "jlpm build:prod"
 ]
-before-build-python = ["jlpm clean:all"]
+before-build-python = ["jlpm clean"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
