@@ -67,6 +67,8 @@ version_cmd = "python scripts/bump-version.py"
 before-bump-version = ["python -m pip install 'jupyterlab>=4.1.1,<4.2'", "jlpm"]
 before-build-npm = [
     "python -m pip install 'jupyterlab>=4.1.1,<4.2'",
+    "jlpm",
+    "jlpm clean",
     "jlpm build:prod"
 ]
 before-build-python = ["jlpm clean:all"]
