@@ -22,7 +22,7 @@ jobs:
       uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
     - name: Install dependencies
-      run: python -m pip install -U "jupyterlab>=4.0.0,<5"
+      run: python -m pip install -U "jupyterlab>=4.1.1,<4.2"
 
     - name: Lint the extension
       run: |
@@ -74,7 +74,7 @@ jobs:
         sudo rm -rf $(which node)
         sudo rm -rf $(which node)
 
-        pip install "jupyterlab>=4.0.0,<5" jupyterlite_javascript_kernel*.whl
+        pip install "jupyterlab>=4.1.1,<4.2" jupyterlite_javascript_kernel*.whl
 
 
         jupyter labextension list
