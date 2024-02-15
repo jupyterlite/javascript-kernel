@@ -22,7 +22,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   constructor(options: JavaScriptKernel.IOptions) {
     super(options);
     this._worker = this.initWorker(options);
-    this._worker.onmessage = (e) => this._processWorkerMessage(e.data);
+    this._worker.onmessage = e => this._processWorkerMessage(e.data);
     this.remoteKernel = this.initRemote(options);
     this._ready.resolve();
   }
@@ -55,14 +55,14 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
       implementation_version: '0.1.0',
       language_info: {
         codemirror_mode: {
-          name: 'javascript',
+          name: 'javascript'
         },
         file_extension: '.js',
         mimetype: 'text/javascript',
         name: 'javascript',
         nbconvert_exporter: 'javascript',
         pygments_lexer: 'javascript',
-        version: 'es2017',
+        version: 'es2017'
       },
       protocol_version: '5.3',
       status: 'ok',
@@ -70,9 +70,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
       help_links: [
         {
           text: 'JavaScript Kernel',
-          url: 'https://github.com/jupyterlite/jupyterlite',
-        },
-      ],
+          url: 'https://github.com/jupyterlite/jupyterlite'
+        }
+      ]
     };
     return content;
   }
@@ -83,7 +83,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @param msg The parent message.
    */
   async executeRequest(
-    content: KernelMessage.IExecuteRequestMsg['content'],
+    content: KernelMessage.IExecuteRequestMsg['content']
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
     const result = await this.remoteKernel.execute(content, this.parent);
     result.execution_count = this.executionCount;
@@ -96,7 +96,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @param msg The parent message.
    */
   async completeRequest(
-    content: KernelMessage.ICompleteRequestMsg['content'],
+    content: KernelMessage.ICompleteRequestMsg['content']
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
     return await this.remoteKernel.complete(content, this.parent);
   }
@@ -109,7 +109,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @returns A promise that resolves with the response message.
    */
   async inspectRequest(
-    content: KernelMessage.IInspectRequestMsg['content'],
+    content: KernelMessage.IInspectRequestMsg['content']
   ): Promise<KernelMessage.IInspectReplyMsg['content']> {
     throw new Error('Not implemented');
   }
@@ -122,7 +122,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @returns A promise that resolves with the response message.
    */
   async isCompleteRequest(
-    content: KernelMessage.IIsCompleteRequestMsg['content'],
+    content: KernelMessage.IIsCompleteRequestMsg['content']
   ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
     throw new Error('Not implemented');
   }
@@ -135,7 +135,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @returns A promise that resolves with the response message.
    */
   async commInfoRequest(
-    content: KernelMessage.ICommInfoRequestMsg['content'],
+    content: KernelMessage.ICommInfoRequestMsg['content']
   ): Promise<KernelMessage.ICommInfoReplyMsg['content']> {
     throw new Error('Not implemented');
   }
@@ -186,7 +186,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    */
   protected initWorker(options: JavaScriptKernel.IOptions): Worker {
     return new Worker(new URL('./comlink.worker.js', import.meta.url), {
-      type: 'module',
+      type: 'module'
     });
   }
 
@@ -197,7 +197,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * @returns The initialized remote kernel.
    */
   protected initRemote(
-    options: JavaScriptKernel.IOptions,
+    options: JavaScriptKernel.IOptions
   ): IRemoteJavaScriptWorkerKernel {
     const remote: IRemoteJavaScriptWorkerKernel = wrap(this._worker);
     remote.initialize({ baseUrl: PageConfig.getBaseUrl() });
@@ -243,7 +243,11 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
         break;
       }
       case 'execute_result': {
-        const bundle = msg.bundle ?? { execution_count: 0, data: {}, metadata: {} };
+        const bundle = msg.bundle ?? {
+          execution_count: 0,
+          data: {},
+          metadata: {}
+        };
         this.publishExecuteResult(bundle, parentHeader);
         break;
       }
@@ -260,7 +264,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
           msg.content,
           msg.metadata,
           msg.buffers,
-          msg.parentHeader,
+          msg.parentHeader
         );
         break;
       }

@@ -3,7 +3,10 @@
 
 import { PageConfig, URLExt } from '@jupyterlab/coreutils';
 
-import { JupyterLiteServer, JupyterLiteServerPlugin } from '@jupyterlite/server';
+import {
+  JupyterLiteServer,
+  JupyterLiteServerPlugin
+} from '@jupyterlite/server';
 
 import { IKernel, IKernelSpecs } from '@jupyterlite/kernel';
 
@@ -26,14 +29,14 @@ const kernel: JupyterLiteServerPlugin<void> = {
         argv: [],
         resources: {
           'logo-32x32': '',
-          'logo-64x64': URLExt.join(baseUrl, '/kernelspecs/javascript.svg'),
-        },
+          'logo-64x64': URLExt.join(baseUrl, '/kernelspecs/javascript.svg')
+        }
       },
       create: async (options: IKernel.IOptions): Promise<IKernel> => {
         return new JavaScriptKernel(options);
-      },
+      }
     });
-  },
+  }
 };
 
 const plugins: JupyterLiteServerPlugin<any>[] = [kernel];
