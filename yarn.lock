@@ -2813,17 +2813,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@jupyterlite/javascript-kernel-extension@workspace:packages/javascript-kernel-extension"
   dependencies:
-    "@babel/core": ^7.11.6
-    "@babel/preset-env": ^7.12.1
     "@jupyterlab/builder": ~4.1.1
-    "@jupyterlab/coreutils": ~6.1.1
     "@jupyterlite/javascript-kernel": ^0.2.1
     "@jupyterlite/kernel": ^0.2.1
     "@jupyterlite/server": ^0.2.1
-    "@types/jest": ^29.5.3
-    jest: ^29.6.2
     rimraf: ~5.0.1
-    ts-jest: ^29.1.1
     typescript: ~5.1.6
   languageName: unknown
   linkType: soft
