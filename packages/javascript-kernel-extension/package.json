@@ -53,7 +53,21 @@
   },
   "jupyterlab": {
     "extension": true,
-    "outputDir": "../../jupyterlite_javascript_kernel/labextension"
+    "outputDir": "../../jupyterlite_javascript_kernel/labextension",
+    "sharedPackages": {
+      "@jupyterlite/kernel": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlite/server": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlite/contents": {
+        "bundled": false,
+        "singleton": true
+      }
+    }
   },
   "jupyterlite": {
     "liteExtension": true

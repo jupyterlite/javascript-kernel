@@ -2814,7 +2814,7 @@ __metadata:
   resolution: "@jupyterlite/javascript-kernel-extension@workspace:packages/javascript-kernel-extension"
   dependencies:
     "@jupyterlab/builder": ~4.1.1
-    "@jupyterlite/javascript-kernel": ^0.2.1
+    "@jupyterlite/javascript-kernel": ^0.3.0-alpha.0
     "@jupyterlite/kernel": ^0.2.1
     "@jupyterlite/server": ^0.2.1
     rimraf: ~5.0.1
@@ -2837,7 +2837,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@jupyterlite/javascript-kernel@^0.2.1, @jupyterlite/javascript-kernel@workspace:packages/javascript-kernel":
+"@jupyterlite/javascript-kernel@^0.3.0-alpha.0, @jupyterlite/javascript-kernel@workspace:packages/javascript-kernel":
   version: 0.0.0-use.local
   resolution: "@jupyterlite/javascript-kernel@workspace:packages/javascript-kernel"
   dependencies:
