@@ -2,6 +2,22 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.3.0a1
+
+([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/v0.3.0a0...24e8d7abb6bd51633233c5bbeac9d54a70e98047))
+
+### Maintenance and upkeep improvements
+
+- Fix shared packages [#8](https://github.com/jupyterlite/javascript-kernel/pull/8) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2024-02-15&to=2024-02-16&type=c))
+
+[@jtpio](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2024-02-15..2024-02-16&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.3.0a0
 
 ([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/123a40c18f04b8aa22a86f2352366153e8ed1706...535e97b683a0fa127a936fbe07e05345794a3674))
@@ -22,7 +38,5 @@
 ([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2024-02-15&to=2024-02-15&type=c))
 
 [@jtpio](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2024-02-15..2024-02-15&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 For previous versions, you can refer to the JupyterLite changelog, which is where this kernel used to be developed: https://jupyterlite.readthedocs.io/en/stable/changelog.html
