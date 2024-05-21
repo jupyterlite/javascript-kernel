@@ -40,8 +40,8 @@
   },
   "dependencies": {
     "@jupyterlite/javascript-kernel": "^0.3.0",
-    "@jupyterlite/kernel": "^0.2.1  || ^0.3.0",
-    "@jupyterlite/server": "^0.2.1 || ^0.3.0"
+    "@jupyterlite/kernel": "^0.2.1  || ^0.3.0 || ^0.4.0-alpha.0",
+    "@jupyterlite/server": "^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0"
   },
   "devDependencies": {
     "@jupyterlab/builder": "~4.1.1",
