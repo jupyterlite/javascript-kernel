@@ -2837,8 +2837,8 @@ __metadata:
   dependencies:
     "@jupyterlab/builder": ~4.1.1
     "@jupyterlite/javascript-kernel": ^0.3.0
-    "@jupyterlite/kernel": ^0.2.1  || ^0.3.0
-    "@jupyterlite/server": ^0.2.1 || ^0.3.0
+    "@jupyterlite/kernel": ^0.2.1  || ^0.3.0 || ^0.4.0-alpha.0
+    "@jupyterlite/server": ^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0
     rimraf: ~5.0.1
     typescript: ~5.1.6
   languageName: unknown
@@ -2867,7 +2867,7 @@ __metadata:
     "@babel/preset-env": ^7.12.1
     "@jupyterlab/coreutils": ~6.1.1
     "@jupyterlab/testutils": ~4.1.1
-    "@jupyterlite/kernel": ^0.2.1 || ^0.3.0
+    "@jupyterlite/kernel": ^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0
     "@types/jest": ^29.5.3
     "@types/object-inspect": ^1.8.4
     comlink: ^4.3.1
@@ -2879,7 +2879,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@jupyterlite/kernel@npm:^0.2.1  || ^0.3.0, @jupyterlite/kernel@npm:^0.2.1 || ^0.3.0, @jupyterlite/kernel@npm:^0.3.0":
+"@jupyterlite/kernel@npm:^0.2.1  || ^0.3.0 || ^0.4.0-alpha.0, @jupyterlite/kernel@npm:^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0, @jupyterlite/kernel@npm:^0.3.0":
   version: 0.3.0
   resolution: "@jupyterlite/kernel@npm:0.3.0"
   dependencies:
@@ -2908,7 +2908,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyterlite/server@npm:^0.2.1 || ^0.3.0":
+"@jupyterlite/server@npm:^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0":
   version: 0.3.0
   resolution: "@jupyterlite/server@npm:0.3.0"
   dependencies:
@@ -12768,7 +12768,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vscode-jsonrpc@npm:8.2.0, vscode-jsonrpc@npm:^8.0.2":
+"vscode-jsonrpc@npm:8.2.0":
   version: 8.2.0
   resolution: "vscode-jsonrpc@npm:8.2.0"
   checksum: f302a01e59272adc1ae6494581fa31c15499f9278df76366e3b97b2236c7c53ebfc71efbace9041cfd2caa7f91675b9e56f2407871a1b3c7f760a2e2ee61484a
@@ -12779,6 +12779,13 @@ __metadata:
   version: 6.0.0
   resolution: "vscode-jsonrpc@npm:6.0.0"
   checksum: 3a67a56f287e8c449f2d9752eedf91e704dc7b9a326f47fb56ac07667631deb45ca52192e9bccb2ab108764e48409d70fa64b930d46fc3822f75270b111c5f53
+  languageName: node
+  linkType: hard
+
+"vscode-jsonrpc@npm:^8.0.2":
+  version: 8.2.1
+  resolution: "vscode-jsonrpc@npm:8.2.1"
+  checksum: 2af2c333d73f6587896a7077978b8d4b430e55c674d5dbb90597a84a6647057c1655a3bff398a9b08f1f8ba57dbd2deabf05164315829c297b0debba3b8bc19e
   languageName: node
   linkType: hard
 
