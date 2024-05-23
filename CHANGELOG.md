@@ -2,6 +2,23 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.4.0a0
+
+([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/@jupyterlite/javascript-kernel-extension@0.3.0...d557adf3cd01c6007b64e5a9be185d091c6531c3))
+
+### Maintenance and upkeep improvements
+
+- Update to JupyterLite 0.4.0 [#14](https://github.com/jupyterlite/javascript-kernel/pull/14) ([@jtpio](https://github.com/jtpio))
+- Fix CI [#13](https://github.com/jupyterlite/javascript-kernel/pull/13) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2024-03-26&to=2024-05-23&type=c))
+
+[@jtpio](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2024-03-26..2024-05-23&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.3.0
 
 ([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/@jupyterlite/javascript-kernel-extension@0.3.0-alpha.1...0ec2e58c1ec85fefbb35109e8414f5a2ba97de80))
@@ -16,8 +33,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2024-02-16&to=2024-03-26&type=c))
 
 [@jtpio](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2024-02-16..2024-03-26&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.3.0a1
 
