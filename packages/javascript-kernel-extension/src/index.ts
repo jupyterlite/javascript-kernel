@@ -2,11 +2,13 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  JupyterLiteServer,
-  JupyterLiteServerPlugin
-} from '@jupyterlite/server';
+  JupyterFrontEnd,
+  JupyterFrontEndPlugin
+} from '@jupyterlab/application';
 
-import { IKernel, IKernelSpecs } from '@jupyterlite/kernel';
+import type { IKernel } from '@jupyterlite/services';
+
+import { IKernelSpecs } from '@jupyterlite/services';
 
 import { JavaScriptKernel } from '@jupyterlite/javascript-kernel';
 
@@ -17,17 +19,25 @@ import jsLogo64 from '../style/icons/logo-64x64.png';
 /**
  * A plugin to register the JavaScript kernel.
  */
-const kernel: JupyterLiteServerPlugin<void> = {
+const kernel: JupyterFrontEndPlugin<void> = {
   id: '@jupyterlite/javascript-kernel-extension:kernel',
   autoStart: true,
   requires: [IKernelSpecs],
-  activate: (app: JupyterLiteServer, kernelspecs: IKernelSpecs) => {
+  activate: (app: JupyterFrontEnd, kernelspecs: IKernelSpecs) => {
     kernelspecs.register({
       spec: {
         name: 'javascript',
         display_name: 'JavaScript (Web Worker)',
         language: 'javascript',
         argv: [],
+        spec: {
+          argv: [],
+          env: {},
+          display_name: 'JavaScript (Web Worker)',
+          language: 'javascript',
+          interrupt_mode: 'message',
+          metadata: {}
+        },
         resources: {
           'logo-32x32': jsLogo32,
           'logo-64x64': jsLogo64
@@ -40,6 +50,6 @@ const kernel: JupyterLiteServerPlugin<void> = {
   }
 };
 
-const plugins: JupyterLiteServerPlugin<any>[] = [kernel];
+const plugins: JupyterFrontEndPlugin<void>[] = [kernel];
 
 export default plugins;

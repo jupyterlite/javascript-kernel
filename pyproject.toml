@@ -1,12 +1,12 @@
 [build-system]
-requires = ["hatchling>=1.5.0", "jupyterlab>=4.1.1,<4.2", "hatch-nodejs-version>=0.3.2"]
+requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-nodejs-version>=0.3.2"]
 build-backend = "hatchling.build"
 
 [project]
 name = "jupyterlite_javascript_kernel"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Framework :: Jupyter",
     "Framework :: Jupyter :: JupyterLab",
@@ -16,19 +16,20 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
+dependencies = []
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
 [tool.hatch.version]
 source = "nodejs"
 
 [tool.hatch.metadata.hooks.nodejs]
-fields = ["description", "authors", "urls"]
+fields = ["description", "authors", "urls", "keywords"]
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["jupyterlite_javascript_kernel/labextension"]
@@ -64,13 +65,16 @@ build_dir = "jupyterlite_javascript_kernel/labextension"
 version_cmd = "python scripts/bump-version.py"
 
 [tool.jupyter-releaser.hooks]
-before-bump-version = ["python -m pip install 'jupyterlab>=4.1.1,<4.2'", "jlpm"]
+before-bump-version = [
+    "python -m pip install 'jupyterlab>=4.0.0,<5'",
+    "jlpm",
+]
 before-build-npm = [
-    "python -m pip install 'jupyterlab>=4.1.1,<4.2'",
-    "jlpm clean",
+    "python -m pip install 'jupyterlab>=4.0.0,<5'",
+    "jlpm",
     "jlpm build:prod"
 ]
-before-build-python = ["jlpm clean"]
+before-build-python = ["jlpm clean:all"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
