@@ -403,7 +403,7 @@ export class JavaScriptExecutor {
 
     // Inject built-in functions from 'this' (the iframe window when called)
     // This is needed because new Function() scopes to parent window
-    const builtinsCode = `const { display, console } = this;`;
+    const builtinsCode = 'const { display, console } = this;';
 
     const asyncFunction = new Function(`
       const afunc = async function() {

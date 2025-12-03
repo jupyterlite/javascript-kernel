@@ -369,15 +369,14 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     }
 
     const executor = this._executor;
-    const kernel = this;
 
     // Create display function that uses executor's getMimeBundle
     // and calls kernel's displayData directly
     const display = (obj: any, metadata?: Record<string, any>) => {
       const data = executor.getMimeBundle(obj);
-      kernel.displayData(
+      this.displayData(
         { data, metadata: metadata ?? {}, transient: {} },
-        kernel.parentHeader
+        this.parentHeader
       );
     };
 
