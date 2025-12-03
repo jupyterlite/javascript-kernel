@@ -1,8 +1,8 @@
 import { PageConfig } from '@jupyterlab/coreutils';
 
-import { KernelMessage } from '@jupyterlab/services';
+import type { KernelMessage } from '@jupyterlab/services';
 
-import { BaseKernel, IKernel } from '@jupyterlite/kernel';
+import { BaseKernel, type IKernel } from '@jupyterlite/services';
 
 import { PromiseDelegate } from '@lumino/coreutils';
 

@@ -7,7 +7,7 @@
 
 import type { Remote } from 'comlink';
 
-import { IWorkerKernel } from '@jupyterlite/kernel';
+import { IWorkerKernel } from '@jupyterlite/services';
 
 /**
  * An interface for JavaScript workers.
@@ -22,8 +22,7 @@ export interface IJavaScriptWorkerKernel extends IWorkerKernel {
 /**
  * An convenience interface for JavaScript workers wrapped by a comlink Remote.
  */
-export interface IRemoteJavaScriptWorkerKernel
-  extends Remote<IJavaScriptWorkerKernel> {}
+export interface IRemoteJavaScriptWorkerKernel extends Remote<IJavaScriptWorkerKernel> {}
 
 /**
  * An namespace for JavaScript workers.

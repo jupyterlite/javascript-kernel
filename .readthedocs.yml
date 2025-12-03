@@ -1,0 +1,12 @@
+version: 2
+
+build:
+  os: ubuntu-22.04
+  tools:
+    python: mambaforge-latest
+  commands:
+    - mamba env update --name base --file docs/environment.yml
+    - python -m pip install .
+    - jupyter lite build --output-dir dist
+    - mkdir -p $READTHEDOCS_OUTPUT/html
+    - cp -r dist/* $READTHEDOCS_OUTPUT/html/

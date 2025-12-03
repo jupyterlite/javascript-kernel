@@ -4,3 +4,5 @@ node_modules
 **/package.json
 !/package.json
 jupyterlite_javascript_kernel
+.venv
+docs

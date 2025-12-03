@@ -39,14 +39,15 @@
     "watch:src": "tsc -w"
   },
   "dependencies": {
+    "@jupyterlab/application": "^4.5.0",
     "@jupyterlite/javascript-kernel": "^0.4.0-alpha.0",
-    "@jupyterlite/kernel": "^0.2.1  || ^0.3.0 || ^0.4.0-alpha.0",
-    "@jupyterlite/server": "^0.2.1 || ^0.3.0 || ^0.4.0-alpha.0"
+    "@jupyterlite/services": "^0.7.0"
   },
   "devDependencies": {
-    "@jupyterlab/builder": "~4.1.1",
+    "@jupyterlab/builder": "^4.5.0",
+    "npm-run-all2": "^7.0.1",
     "rimraf": "~5.0.1",
-    "typescript": "~5.1.6"
+    "typescript": "~5.0.2"
   },
   "publishConfig": {
     "access": "public"
@@ -55,15 +56,7 @@
     "extension": true,
     "outputDir": "../../jupyterlite_javascript_kernel/labextension",
     "sharedPackages": {
-      "@jupyterlite/kernel": {
-        "bundled": false,
-        "singleton": true
-      },
-      "@jupyterlite/server": {
-        "bundled": false,
-        "singleton": true
-      },
-      "@jupyterlite/contents": {
+      "@jupyterlite/services": {
         "bundled": false,
         "singleton": true
       }
