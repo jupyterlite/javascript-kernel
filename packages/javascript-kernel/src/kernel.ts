@@ -14,9 +14,9 @@ import { JavaScriptExecutor } from './executor';
  */
 export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
-   * Instantiate a new JavaScriptKernel
+   * Instantiate a new JavaScriptKernel.
    *
-   * @param options The instantiation options for a new JavaScriptKernel
+   * @param options - The instantiation options for a new JavaScriptKernel.
    */
   constructor(options: JavaScriptKernel.IOptions) {
     super(options);
@@ -58,7 +58,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   }
 
   /**
-   * Handle a kernel_info_request message
+   * Handle a kernel_info_request message.
    */
   async kernelInfoRequest(): Promise<KernelMessage.IInfoReplyMsg['content']> {
     const content: KernelMessage.IInfoReply = {
@@ -89,9 +89,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   }
 
   /**
-   * Handle an `execute_request` message
+   * Handle an `execute_request` message.
    *
-   * @param content The content of the request.
+   * @param content - The content of the request.
    */
   async executeRequest(
     content: KernelMessage.IExecuteRequestMsg['content']
@@ -165,9 +165,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   }
 
   /**
-   * Handle a complete_request message
+   * Handle a complete_request message.
    *
-   * @param content The content of the request.
+   * @param content - The content of the request.
    */
   async completeRequest(
     content: KernelMessage.ICompleteRequestMsg['content']
@@ -304,7 +304,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
    * Execute code in the kernel IFrame.
    *
-   * @param code The code to execute.
+   * @param code - The code to execute.
    */
   protected _eval(code: string): any {
     return this._evalCodeFunc(this._iframe.contentWindow, code);
@@ -441,7 +441,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
    * Process a message coming from the IFrame.
    *
-   * @param msg The message to process.
+   * @param msg - The message to process.
    */
   protected _processMessage(msg: any): void {
     if (!msg || !msg.type) {
@@ -505,7 +505,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     }
   }
 
-  // Function to execute an async function in the iframe context
+  /**
+   * Execute an async function in the iframe context.
+   */
   private _evalFunc = (win: Window | null, asyncFunc: () => Promise<any>) => {
     if (!win) {
       throw new Error('IFrame window not available');
@@ -513,7 +515,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     return asyncFunc.call(win);
   };
 
-  // Function to execute raw code string in the iframe context
+  /**
+   * Execute raw code string in the iframe context.
+   */
   private _evalCodeFunc = new Function(
     'window',
     'code',
