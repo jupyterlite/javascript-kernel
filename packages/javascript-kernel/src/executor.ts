@@ -695,7 +695,7 @@ export class JavaScriptExecutor {
       };
     } catch {
       // Try to provide info even if we can't evaluate
-      return this._inspectBuiltin(expression, detailLevel);
+      return this.inspectBuiltin(expression, detailLevel);
     }
   }
 
@@ -707,7 +707,7 @@ export class JavaScriptExecutor {
    * @param detailLevel - The level of detail requested.
    * @returns The inspection result.
    */
-  protected _inspectBuiltin(
+  protected inspectBuiltin(
     expression: string,
     detailLevel: number
   ): IInspectResult {
@@ -718,7 +718,7 @@ export class JavaScriptExecutor {
     }
 
     // Fall back to predefined documentation
-    const doc = this._getBuiltinDocumentation(expression);
+    const doc = this.getBuiltinDocumentation(expression);
     if (doc) {
       return {
         found: true,
@@ -757,7 +757,7 @@ export class JavaScriptExecutor {
    * @param expression - The expression to get documentation for.
    * @returns The documentation string, or null if not found.
    */
-  protected _getBuiltinDocumentation(expression: string): string | null {
+  protected getBuiltinDocumentation(expression: string): string | null {
     // Common JavaScript built-ins documentation
     const builtins: Record<string, string> = {
       console:
@@ -1544,7 +1544,7 @@ export class JavaScriptExecutor {
       );
 
       // Add predefined documentation if available
-      const doc = this._getBuiltinDocumentation(expression);
+      const doc = this.getBuiltinDocumentation(expression);
       if (doc) {
         const mdContent = inspectionData['text/markdown'] || '';
         inspectionData['text/markdown'] = mdContent + `\n\n---\n\n${doc}`;

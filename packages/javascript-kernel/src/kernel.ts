@@ -20,7 +20,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    */
   constructor(options: JavaScriptKernel.IOptions) {
     super(options);
-    this._initIFrame();
+    this.initIFrame();
   }
 
   /**
@@ -30,7 +30,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     if (this.isDisposed) {
       return;
     }
-    this._cleanupIFrame();
+    this.cleanupIFrame();
     super.dispose();
   }
 
@@ -306,14 +306,14 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    *
    * @param code - The code to execute.
    */
-  protected _eval(code: string): any {
+  protected evaluate(code: string): any {
     return this._evalCodeFunc(this._iframe.contentWindow, code);
   }
 
   /**
    * Initialize the IFrame and set up communication.
    */
-  protected async _initIFrame(): Promise<void> {
+  protected async initIFrame(): Promise<void> {
     this._container = document.createElement('div');
     this._container.style.cssText =
       'position:absolute;width:0;height:0;overflow:hidden;';
@@ -341,12 +341,12 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     });
 
     // Set up console overrides in the iframe
-    this._setupConsoleOverrides();
+    this.setupConsoleOverrides();
 
     // Set up message handling for console output
     this._messageHandler = (event: MessageEvent) => {
       if (event.source === this._iframe.contentWindow) {
-        this._processMessage(event.data);
+        this.processMessage(event.data);
       }
     };
     window.addEventListener('message', this._messageHandler);
@@ -354,7 +354,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     // Initialize the executor with the iframe's window
     if (this._iframe.contentWindow) {
       this._executor = new JavaScriptExecutor(this._iframe.contentWindow);
-      this._setupDisplay();
+      this.setupDisplay();
     }
 
     this._ready.resolve();
@@ -363,7 +363,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
    * Set up the display() function in the iframe.
    */
-  protected _setupDisplay(): void {
+  protected setupDisplay(): void {
     if (!this._iframe.contentWindow || !this._executor) {
       return;
     }
@@ -387,7 +387,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
    * Set up console overrides in the iframe to bubble output to parent.
    */
-  protected _setupConsoleOverrides(): void {
+  protected setupConsoleOverrides(): void {
     if (!this._iframe.contentWindow) {
       return;
     }
@@ -426,7 +426,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
    * Clean up the iframe resources.
    */
-  protected _cleanupIFrame(): void {
+  protected cleanupIFrame(): void {
     if (this._messageHandler) {
       window.removeEventListener('message', this._messageHandler);
       this._messageHandler = null;
@@ -443,7 +443,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    *
    * @param msg - The message to process.
    */
-  protected _processMessage(msg: any): void {
+  protected processMessage(msg: any): void {
     if (!msg || !msg.type) {
       return;
     }
