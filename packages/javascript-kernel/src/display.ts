@@ -9,7 +9,7 @@ export interface IMimeBundle {
 }
 
 /**
- * Display request from $$.display().
+ * Display request from display().
  */
 export interface IDisplayData {
   data: IMimeBundle;
@@ -74,7 +74,7 @@ export class DisplayHelper {
    * @returns A new DisplayHelper instance.
    *
    * @example
-   * $$.display('my-id').html('<div>...</div>')
+   * display('my-id').html('<div>...</div>')
    */
   display(id?: string): DisplayHelper {
     return new DisplayHelper(id);
