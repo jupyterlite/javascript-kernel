@@ -3388,11 +3388,11 @@ __metadata:
     "@jupyterlab/coreutils": ^6.0.0
     "@jupyterlab/testutils": ~4.5.0
     "@jupyterlite/services": ^0.7.0
+    "@lumino/coreutils": ^2.0.0
     "@types/jest": ^26.0.10
-    "@types/object-inspect": ^1.8.4
-    comlink: ^4.3.1
+    astring: ^1.9.0
     jest: ^26.4.2
-    object-inspect: ^1.13.1
+    meriyah: ^4.3.9
     rimraf: ~5.0.1
     ts-jest: ^26.3.0
     typescript: ~5.0.2
@@ -3783,7 +3783,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lumino/coreutils@npm:^1.11.0 || ^2.2.2, @lumino/coreutils@npm:^2.2.2":
+"@lumino/coreutils@npm:^1.11.0 || ^2.2.2, @lumino/coreutils@npm:^2.0.0, @lumino/coreutils@npm:^2.2.2":
   version: 2.2.2
   resolution: "@lumino/coreutils@npm:2.2.2"
   dependencies:
@@ -5113,13 +5113,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/object-inspect@npm:^1.8.4":
-  version: 1.13.0
-  resolution: "@types/object-inspect@npm:1.13.0"
-  checksum: 8caf52c815947540b5246e0b5b2d455a2183791fe9427537eab8a40b465392400cee6ce50beaeb35465e167e9cb405ccfde90eb5317ee2c9df85af7508f0a320
-  languageName: node
-  linkType: hard
-
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.2
   resolution: "@types/parse-json@npm:4.0.2"
@@ -5995,6 +5988,15 @@ __metadata:
   version: 2.0.0
   resolution: "astral-regex@npm:2.0.0"
   checksum: 876231688c66400473ba505731df37ea436e574dd524520294cc3bbc54ea40334865e01fa0d074d74d036ee874ee7e62f486ea38bc421ee8e6a871c06f011766
+  languageName: node
+  linkType: hard
+
+"astring@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "astring@npm:1.9.0"
+  bin:
+    astring: bin/astring
+  checksum: 69ffde3643f5280c6846231a995af878a94d3eab41d1a19a86b8c15f456453f63a7982cf5dd72d270b9f50dd26763a3e1e48377c961b7df16f550132b6dba805
   languageName: node
   linkType: hard
 
@@ -12488,6 +12490,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"meriyah@npm:^4.3.9":
+  version: 4.5.0
+  resolution: "meriyah@npm:4.5.0"
+  checksum: 07b3225ac4528a2572d70ef6499fc97b1934558d49f968b14f167078439e7bc5e5da09fdb8bee9f8e16258fdf9822259054e6d312bd668c5678dfdf2849e3c6a
+  languageName: node
+  linkType: hard
+
 "mermaid@npm:^11.12.1":
   version: 11.12.2
   resolution: "mermaid@npm:11.12.2"
@@ -13529,13 +13538,6 @@ __metadata:
     define-property: ^0.2.5
     kind-of: ^3.0.3
   checksum: a9e35f07e3a2c882a7e979090360d1a20ab51d1fa19dfdac3aa8873b328a7c4c7683946ee97c824ae40079d848d6740a3788fa14f2185155dab7ed970a72c783
-  languageName: node
-  linkType: hard
-
-"object-inspect@npm:^1.13.1":
-  version: 1.13.1
-  resolution: "object-inspect@npm:1.13.1"
-  checksum: 7d9fa9221de3311dcb5c7c307ee5dc011cdd31dc43624b7c184b3840514e118e05ef0002be5388304c416c0eb592feb46e983db12577fc47e47d5752fbbfb61f
   languageName: node
   linkType: hard
 
