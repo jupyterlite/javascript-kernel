@@ -27,13 +27,13 @@ const kernel: JupyterFrontEndPlugin<void> = {
     kernelspecs.register({
       spec: {
         name: 'javascript',
-        display_name: 'JavaScript (Web Worker)',
+        display_name: 'JavaScript',
         language: 'javascript',
         argv: [],
         spec: {
           argv: [],
           env: {},
-          display_name: 'JavaScript (Web Worker)',
+          display_name: 'JavaScript',
           language: 'javascript',
           interrupt_mode: 'message',
           metadata: {}
