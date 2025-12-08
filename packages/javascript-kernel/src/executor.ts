@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { parseScript } from 'meriyah';
+import { generate } from 'astring';
 
 import { IMimeBundle } from './display';
 
@@ -70,6 +71,21 @@ export interface IInspectResult {
   found: boolean;
   data: IMimeBundle;
   metadata: Record<string, any>;
+}
+
+/**
+ * Registry for tracking code declarations across cells.
+ * Allows deduplication - later definitions override earlier ones.
+ */
+export interface ICodeRegistry {
+  /** Function declarations by name (setup, draw, etc.) */
+  functions: Map<string, any>;
+  /** Variable declarations by name */
+  variables: Map<string, any>;
+  /** Class declarations by name */
+  classes: Map<string, any>;
+  /** Other top-level statements (expressions, etc.) in execution order */
+  statements: any[];
 }
 
 /**
@@ -283,6 +299,191 @@ export class JavaScriptExecutor {
   }
 
   /**
+   * Create a new empty code registry.
+   */
+  createCodeRegistry(): ICodeRegistry {
+    return {
+      functions: new Map(),
+      variables: new Map(),
+      classes: new Map(),
+      statements: []
+    };
+  }
+
+  /**
+   * Register code from executed cells into the registry.
+   * Later definitions of the same name will override earlier ones.
+   * Import declarations are skipped (handled separately).
+   *
+   * @param code - The code to register.
+   * @param registry - The registry to add declarations to.
+   */
+  registerCode(code: string, registry: ICodeRegistry): void {
+    if (code.trim().length === 0) {
+      return;
+    }
+
+    try {
+      const ast = parseScript(code, {
+        ranges: true,
+        module: true
+      });
+
+      for (const node of ast.body) {
+        switch (node.type) {
+          case 'FunctionDeclaration':
+            // Store function by name - later definitions override
+            if (node.id && node.id.name) {
+              registry.functions.set(node.id.name, node);
+            }
+            break;
+
+          case 'ClassDeclaration':
+            // Store class by name - later definitions override
+            if (node.id && node.id.name) {
+              registry.classes.set(node.id.name, node);
+            }
+            break;
+
+          case 'VariableDeclaration':
+            // For variable declarations, extract each declarator
+            for (const declarator of node.declarations) {
+              if (declarator.id.type === 'Identifier') {
+                // Store the whole declaration node with just this declarator
+                const singleDecl = {
+                  ...node,
+                  declarations: [declarator]
+                };
+                registry.variables.set(declarator.id.name, singleDecl);
+              } else if (declarator.id.type === 'ObjectPattern') {
+                // Handle destructuring: const { a, b } = obj
+                for (const prop of declarator.id.properties) {
+                  if (
+                    prop.type === 'Property' &&
+                    prop.key.type === 'Identifier'
+                  ) {
+                    const name =
+                      prop.value?.type === 'Identifier'
+                        ? prop.value.name
+                        : prop.key.name;
+                    registry.variables.set(name, {
+                      ...node,
+                      declarations: [declarator],
+                      _destructuredName: name
+                    });
+                  }
+                }
+              } else if (declarator.id.type === 'ArrayPattern') {
+                // Handle array destructuring: const [a, b] = arr
+                for (const element of declarator.id.elements) {
+                  if (element && element.type === 'Identifier') {
+                    registry.variables.set(element.name, {
+                      ...node,
+                      declarations: [declarator],
+                      _destructuredName: element.name
+                    });
+                  }
+                }
+              }
+            }
+            break;
+
+          case 'ImportDeclaration':
+            // Skip imports - handled separately via extractImports
+            break;
+
+          case 'ExpressionStatement':
+            // For expression statements, we need to track them
+            if (
+              node.expression.type === 'AssignmentExpression' &&
+              node.expression.left.type === 'Identifier'
+            ) {
+              // Named assignment like `x = 5;`
+              registry.statements.push(node);
+            } else {
+              // Other expressions (function calls, etc.) - keep in order
+              registry.statements.push(node);
+            }
+            break;
+
+          default:
+            // Other statements (if, for, while, etc.) - keep in order
+            registry.statements.push(node);
+            break;
+        }
+      }
+    } catch {
+      // If parsing fails, we can't register the code
+    }
+  }
+
+  /**
+   * Generate code from the registry.
+   * Produces clean, deduplicated code for regeneration scenarios.
+   * Includes globalThis assignments so declarations are accessible globally.
+   *
+   * @param registry - The registry to generate code from.
+   * @returns Generated JavaScript code string.
+   */
+  generateCodeFromRegistry(registry: ICodeRegistry): string {
+    const programBody: any[] = [];
+    const globalAssignments: string[] = [];
+
+    // Add variables first (they might be used by functions)
+    const seenDestructuringDecls = new Set<string>();
+    for (const [name, node] of registry.variables) {
+      // For destructuring, only add once per actual declaration
+      if (node._destructuredName) {
+        const declKey = generate(node.declarations[0]);
+        if (seenDestructuringDecls.has(declKey)) {
+          continue;
+        }
+        seenDestructuringDecls.add(declKey);
+        // Remove the marker before generating
+        const cleanNode = { ...node };
+        delete cleanNode._destructuredName;
+        programBody.push(cleanNode);
+      } else {
+        programBody.push(node);
+      }
+      globalAssignments.push(`globalThis["${name}"] = ${name};`);
+    }
+
+    // Add classes
+    for (const [name, node] of registry.classes) {
+      programBody.push(node);
+      globalAssignments.push(`globalThis["${name}"] = ${name};`);
+    }
+
+    // Add functions
+    for (const [name, node] of registry.functions) {
+      programBody.push(node);
+      globalAssignments.push(`globalThis["${name}"] = ${name};`);
+    }
+
+    // Add other statements in order
+    for (const node of registry.statements) {
+      programBody.push(node);
+    }
+
+    // Create a program AST and generate code
+    const program = {
+      type: 'Program',
+      body: programBody,
+      sourceType: 'script'
+    };
+
+    // Generate the code and append globalThis assignments
+    const generatedCode = generate(program);
+
+    if (globalAssignments.length > 0) {
+      return generatedCode + '\n' + globalAssignments.join('\n');
+    }
+
+    return generatedCode;
+  }
+
+  /**
    * Get MIME bundle for a value.
    * Supports custom output methods:
    * - _toHtml() for text/html
@@ -431,9 +632,13 @@ export class JavaScriptExecutor {
 
     // Handle generic objects
     if (typeof value === 'object') {
-      // Check if it's already a mime bundle
-      if ('data' in value && typeof value.data === 'object') {
-        return value.data;
+      // Check if it's already a mime bundle (has data with MIME-type keys)
+      if (value.data && typeof value.data === 'object') {
+        const dataKeys = Object.keys(value.data);
+        const hasMimeKeys = dataKeys.some(key => key.includes('/'));
+        if (hasMimeKeys) {
+          return value.data;
+        }
       }
 
       try {
