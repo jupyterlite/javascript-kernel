@@ -45,15 +45,15 @@
   "dependencies": {
     "@jupyterlab/coreutils": "^6.0.0",
     "@jupyterlite/services": "^0.7.0",
-    "comlink": "^4.3.1",
-    "object-inspect": "^1.13.1"
+    "@lumino/coreutils": "^2.0.0",
+    "astring": "^1.9.0",
+    "meriyah": "^4.3.9"
   },
   "devDependencies": {
     "@babel/core": "^7.11.6",
     "@babel/preset-env": "^7.12.1",
     "@jupyterlab/testutils": "~4.5.0",
     "@types/jest": "^26.0.10",
-    "@types/object-inspect": "^1.8.4",
     "jest": "^26.4.2",
     "rimraf": "~5.0.1",
     "ts-jest": "^26.3.0",
