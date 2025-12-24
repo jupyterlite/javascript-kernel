@@ -1024,19 +1024,15 @@ export class JavaScriptExecutor {
           const declarationType = declaration.id.type;
 
           if (declarationType === 'ObjectPattern') {
-            // Handle object destructuring: const { a, b } = obj
+            // Handle object destructuring: const { a, b } = obj or const { a: b } = obj
             for (const prop of declaration.id.properties) {
-              const key = prop.key.name;
-
-              if (key === 'default') {
-                // Handle: const { default: defaultExport } = await import(url)
-                if (prop.value.type === 'Identifier') {
-                  const value = prop.value.name;
-                  extraCode.push(this._addToGlobalThisCode(value));
-                }
-              } else {
-                extraCode.push(this._addToGlobalThisCode(key));
-              }
+              // For { a: b }, key is 'a' but local variable is 'b'
+              // For { a }, key and value are both 'a'
+              const localName =
+                prop.value?.type === 'Identifier'
+                  ? prop.value.name
+                  : prop.key.name;
+              extraCode.push(this._addToGlobalThisCode(localName));
             }
           } else if (declarationType === 'ArrayPattern') {
             // Handle array destructuring: const [a, b] = arr
@@ -1228,11 +1224,14 @@ export class JavaScriptExecutor {
           if (importedNames.length > 0) {
             newCodeOfNode += 'const { ';
             for (let j = 0; j < importedNames.length; j++) {
-              newCodeOfNode += importedNames[j];
-              codeAddToGlobalScope += this._addToGlobalThisCode(
-                localNames[j],
-                importedNames[j]
-              );
+              // Handle aliased imports: import { foo as bar } -> const { foo: bar }
+              if (importedNames[j] !== localNames[j]) {
+                newCodeOfNode += `${importedNames[j]}: ${localNames[j]}`;
+              } else {
+                newCodeOfNode += importedNames[j];
+              }
+              // Use local name for globalThis assignment since that's what's in scope
+              codeAddToGlobalScope += this._addToGlobalThisCode(localNames[j]);
               if (j < importedNames.length - 1) {
                 newCodeOfNode += ', ';
               }
