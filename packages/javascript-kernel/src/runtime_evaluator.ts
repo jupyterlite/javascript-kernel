@@ -4,6 +4,7 @@
 import type { KernelMessage } from '@jupyterlab/services';
 
 import { JavaScriptExecutor } from './executor';
+import { normalizeError } from './errors';
 import type { RuntimeOutputHandler } from './runtime_protocol';
 
 /**
@@ -82,7 +83,7 @@ export class JavaScriptRuntimeEvaluator {
         user_expressions: {}
       };
     } catch (error) {
-      const normalized = this._normalizeError(error);
+      const normalized = normalizeError(error);
       const cleanedStack = this._executor.cleanStackTrace(normalized);
 
       const content: KernelMessage.IReplyErrorContent = {
@@ -258,17 +259,6 @@ export class JavaScriptRuntimeEvaluator {
     }
 
     this._globalScope.display = this._previousDisplay;
-  }
-
-  /**
-   * Normalize thrown value to an Error instance.
-   */
-  private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-
-    return new Error(String(error));
   }
 
   private _globalScope: Record<string, any>;

@@ -34,7 +34,7 @@ pip uninstall jupyterlite-javascript-kernel
 The extension currently registers two JavaScript kernelspecs:
 
 - `JavaScript`:
-  Runs code in a sandboxed `iframe`. Use this when your code needs browser DOM APIs like `document`, `window`, or canvas access through the page context.
+  Runs code in a hidden runtime `iframe` on the main page thread. Use this when your code needs browser DOM APIs like `document`, `window`, or canvas access through the page context.
 - `JavaScript (Worker)`:
   Runs code in a dedicated Web Worker. Use this for stronger isolation and to avoid blocking the main UI thread.
 

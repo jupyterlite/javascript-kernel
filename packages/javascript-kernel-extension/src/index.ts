@@ -70,7 +70,6 @@ const kernelIFrame: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [IKernelSpecs],
   activate: (app: JupyterFrontEnd, kernelspecs: IKernelSpecs) => {
-    void app;
     registerKernel(kernelspecs, {
       name: 'javascript',
       displayName: 'JavaScript',
@@ -87,7 +86,6 @@ const kernelWorker: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [IKernelSpecs],
   activate: (app: JupyterFrontEnd, kernelspecs: IKernelSpecs) => {
-    void app;
     registerKernel(kernelspecs, {
       name: 'javascript-worker',
       displayName: 'JavaScript (Worker)',

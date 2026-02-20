@@ -6,6 +6,7 @@ import type { KernelMessage } from '@jupyterlab/services';
 import { PromiseDelegate } from '@lumino/coreutils';
 
 import type { JavaScriptExecutor } from './executor';
+import { normalizeError } from './errors';
 import { JavaScriptRuntimeEvaluator } from './runtime_evaluator';
 import type {
   RuntimeOutputHandler,
@@ -169,13 +170,11 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
   private async _init(): Promise<void> {
     try {
       this._container = document.createElement('div');
-      this._container.style.cssText =
-        'position:absolute;width:0;height:0;overflow:hidden;';
+      this._container.style.display = 'none';
       document.body.appendChild(this._container);
 
       this._iframe = document.createElement('iframe');
-      this._iframe.sandbox.add('allow-scripts', 'allow-same-origin');
-      this._iframe.style.cssText = 'border:none;width:100%;height:100%;';
+      this._iframe.style.border = 'none';
       this._iframe.srcdoc = `<!DOCTYPE html>
 <html>
 <head>
@@ -500,7 +499,7 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
       });
       this._ready.resolve();
     } catch (error) {
-      this._handleWorkerFatal(this._normalizeError(error));
+      this._handleWorkerFatal(normalizeError(error));
     }
   }
 
@@ -522,16 +521,6 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
       pending.reject(error);
     }
     this._pending.clear();
-  }
-
-  /**
-   * Normalize unknown values to Error instances.
-   */
-  private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-    return new Error(String(error));
   }
 
   private _options: WorkerRuntimeBackend.IOptions;

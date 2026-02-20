@@ -1,6 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import { normalizeError } from './errors';
 import { JavaScriptRuntimeEvaluator } from './runtime_evaluator';
 import type {
   RuntimeRequest,
@@ -162,14 +163,4 @@ function sanitize(value: any, seen: WeakSet<object>, depth: number): any {
   }
 
   return String(value);
-}
-
-/**
- * Normalize unknown thrown value into Error.
- */
-function normalizeError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-  return new Error(String(error));
 }

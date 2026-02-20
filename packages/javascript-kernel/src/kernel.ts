@@ -6,6 +6,7 @@ import type { KernelMessage } from '@jupyterlab/services';
 import { BaseKernel, type IKernel } from '@jupyterlite/services';
 
 import type { JavaScriptExecutor } from './executor';
+import { normalizeError as normalizeUnknownError } from './errors';
 import {
   IFrameRuntimeBackend,
   IRuntimeBackend,
@@ -196,28 +197,28 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * Send an `input_reply` message.
    */
   inputReply(content: KernelMessage.IInputReplyMsg['content']): void {
-    throw new Error('Not implemented');
+    this._logUnsupportedControlMessage('input_reply');
   }
 
   /**
    * Send an `comm_open` message.
    */
   async commOpen(msg: KernelMessage.ICommOpenMsg): Promise<void> {
-    throw new Error('Not implemented');
+    this._logUnsupportedControlMessage('comm_open', msg.content.target_name);
   }
 
   /**
    * Send an `comm_msg` message.
    */
   async commMsg(msg: KernelMessage.ICommMsgMsg): Promise<void> {
-    throw new Error('Not implemented');
+    this._logUnsupportedControlMessage('comm_msg');
   }
 
   /**
    * Send an `comm_close` message.
    */
   async commClose(msg: KernelMessage.ICommCloseMsg): Promise<void> {
-    throw new Error('Not implemented');
+    this._logUnsupportedControlMessage('comm_close');
   }
 
   /**
@@ -248,7 +249,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
             execute: async code => {
               const reply = await context.execute(code);
               if (reply.status === 'error') {
-                throw this.createRuntimeInitializationError(reply);
+                throw this._createRuntimeInitializationError(reply);
               }
               return reply;
             }
@@ -308,17 +309,13 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * Normalize unknown thrown values into Error instances.
    */
   protected normalizeError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-
-    return new Error(String(error));
+    return normalizeUnknownError(error, 'RuntimeError');
   }
 
   /**
    * Normalize an execute reply error into an Error instance.
    */
-  private createRuntimeInitializationError(
+  private _createRuntimeInitializationError(
     reply: KernelMessage.IExecuteReplyMsg['content']
   ): Error {
     const ename =
@@ -343,6 +340,28 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     return error;
   }
 
+  /**
+   * Warn once per unsupported control message type to avoid noisy consoles.
+   */
+  private _logUnsupportedControlMessage(
+    type: 'input_reply' | 'comm_open' | 'comm_msg' | 'comm_close',
+    detail?: string
+  ): void {
+    if (this._unsupportedControlMessages.has(type)) {
+      return;
+    }
+
+    this._unsupportedControlMessages.add(type);
+    const suffix = detail ? ` (${detail})` : '';
+
+    console.warn(
+      `[javascript-kernel] Ignoring unsupported ${type} message${suffix}.`
+    );
+  }
+
+  private _unsupportedControlMessages = new Set<
+    'input_reply' | 'comm_open' | 'comm_msg' | 'comm_close'
+  >();
   private _backend: IRuntimeBackend;
   private _executorFactory?: JavaScriptKernel.IExecutorFactory;
   private _runtimeMode: RuntimeMode;
