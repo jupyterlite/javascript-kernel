@@ -46,6 +46,8 @@ export interface IImportInfo {
   namedImports: Record<string, string>;
 }
 
+type JSCallable = (...args: any[]) => any;
+
 /**
  * Result of code completion.
  */
@@ -120,10 +122,10 @@ export class JavaScriptExecutor {
   /**
    * Instantiate a new JavaScriptExecutor.
    *
-   * @param globalScope - The global scope (window) for code execution.
+   * @param globalScope - The global scope (globalThis) for code execution.
    * @param config - Optional executor configuration.
    */
-  constructor(globalScope: Window, config?: ExecutorConfig) {
+  constructor(globalScope: Record<string, any>, config?: ExecutorConfig) {
     this._globalScope = globalScope;
     this._config = config || new ExecutorConfig();
   }
@@ -166,17 +168,12 @@ export class JavaScriptExecutor {
       ${extraReturnCode}
     `;
 
-    // Inject built-in functions from 'this' (the iframe window when called)
-    // This is needed because new Function() scopes to parent window
-    const builtinsCode = 'const { display, console } = this;';
-
-    const asyncFunction = new Function(`
-      const afunc = async function() {
-        ${builtinsCode}
+    const asyncFunctionFactory = this._createScopedFunction(`
+      return async function() {
         ${combinedCode}
       };
-      return afunc;
-    `)();
+    `) as () => () => Promise<any>;
+    const asyncFunction = asyncFunctionFactory.call(this._globalScope);
 
     return {
       asyncFunction,
@@ -241,7 +238,7 @@ export class JavaScriptExecutor {
   }
 
   /**
-   * Generate async JavaScript code to load imports and assign them to window.
+   * Generate async JavaScript code to load imports and assign them to globalThis.
    * This is used when generating the sketch iframe.
    *
    * @param imports - The import information objects.
@@ -255,19 +252,21 @@ export class JavaScriptExecutor {
     const lines: string[] = [];
 
     for (const imp of imports) {
+      const importCall = `import(${JSON.stringify(imp.url)})`;
+
       if (imp.defaultImport) {
         lines.push(
-          `const { default: ${imp.defaultImport} } = await import("${imp.url}");`
+          `const { default: ${imp.defaultImport} } = await ${importCall};`
         );
-        lines.push(`window["${imp.defaultImport}"] = ${imp.defaultImport};`);
+        lines.push(
+          `globalThis["${imp.defaultImport}"] = ${imp.defaultImport};`
+        );
       }
 
       if (imp.namespaceImport) {
+        lines.push(`const ${imp.namespaceImport} = await ${importCall};`);
         lines.push(
-          `const ${imp.namespaceImport} = await import("${imp.url}");`
-        );
-        lines.push(
-          `window["${imp.namespaceImport}"] = ${imp.namespaceImport};`
+          `globalThis["${imp.namespaceImport}"] = ${imp.namespaceImport};`
         );
       }
 
@@ -278,10 +277,10 @@ export class JavaScriptExecutor {
             k === imp.namedImports[k] ? k : `${k}: ${imp.namedImports[k]}`
           )
           .join(', ');
-        lines.push(`const { ${destructure} } = await import("${imp.url}");`);
+        lines.push(`const { ${destructure} } = await ${importCall};`);
         for (const importedName of namedKeys) {
           const localName = imp.namedImports[importedName];
-          lines.push(`window["${localName}"] = ${localName};`);
+          lines.push(`globalThis["${localName}"] = ${localName};`);
         }
       }
 
@@ -291,7 +290,7 @@ export class JavaScriptExecutor {
         !imp.namespaceImport &&
         Object.keys(imp.namedImports).length === 0
       ) {
-        lines.push(`await import("${imp.url}");`);
+        lines.push(`await ${importCall};`);
       }
     }
 
@@ -549,53 +548,87 @@ export class JavaScriptExecutor {
     }
 
     // Handle Error objects
-    if (value instanceof Error) {
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'Error',
+        typeof Error === 'undefined' ? undefined : Error
+      )
+    ) {
+      const errorValue = value as Error;
       return {
-        'text/plain': value.stack || value.toString(),
+        'text/plain': errorValue.stack || errorValue.toString(),
         'application/json': {
-          name: value.name,
-          message: value.message,
-          stack: value.stack
+          name: errorValue.name,
+          message: errorValue.message,
+          stack: errorValue.stack
         }
       };
     }
 
     // Handle Date objects
-    if (value instanceof Date) {
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'Date',
+        typeof Date === 'undefined' ? undefined : Date
+      )
+    ) {
+      const dateValue = value as Date;
       return {
-        'text/plain': value.toISOString(),
-        'application/json': value.toISOString()
+        'text/plain': dateValue.toISOString(),
+        'application/json': dateValue.toISOString()
       };
     }
 
     // Handle RegExp objects
-    if (value instanceof RegExp) {
-      return { 'text/plain': value.toString() };
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'RegExp',
+        typeof RegExp === 'undefined' ? undefined : RegExp
+      )
+    ) {
+      return { 'text/plain': (value as RegExp).toString() };
     }
 
     // Handle Map
-    if (value instanceof Map) {
-      const entries = Array.from(value.entries());
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'Map',
+        typeof Map === 'undefined' ? undefined : Map
+      )
+    ) {
+      const mapValue = value as Map<any, any>;
+      const entries = Array.from(mapValue.entries());
       try {
         return {
-          'text/plain': `Map(${value.size}) { ${entries.map(([k, v]) => `${String(k)} => ${String(v)}`).join(', ')} }`,
+          'text/plain': `Map(${mapValue.size}) { ${entries.map(([k, v]) => `${String(k)} => ${String(v)}`).join(', ')} }`,
           'application/json': Object.fromEntries(entries)
         };
       } catch {
-        return { 'text/plain': `Map(${value.size})` };
+        return { 'text/plain': `Map(${mapValue.size})` };
       }
     }
 
     // Handle Set
-    if (value instanceof Set) {
-      const items = Array.from(value);
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'Set',
+        typeof Set === 'undefined' ? undefined : Set
+      )
+    ) {
+      const setValue = value as Set<any>;
+      const items = Array.from(setValue);
       try {
         return {
-          'text/plain': `Set(${value.size}) { ${items.map(v => String(v)).join(', ')} }`,
+          'text/plain': `Set(${setValue.size}) { ${items.map(v => String(v)).join(', ')} }`,
           'application/json': items
         };
       } catch {
-        return { 'text/plain': `Set(${value.size})` };
+        return { 'text/plain': `Set(${setValue.size})` };
       }
     }
 
@@ -626,7 +659,13 @@ export class JavaScriptExecutor {
     }
 
     // Handle Promise (show as pending)
-    if (value instanceof Promise) {
+    if (
+      this._isInstanceOfRealm(
+        value,
+        'Promise',
+        typeof Promise === 'undefined' ? undefined : Promise
+      )
+    ) {
       return { 'text/plain': 'Promise { <pending> }' };
     }
 
@@ -707,10 +746,10 @@ export class JavaScriptExecutor {
     let rootObject = globalScope;
     if (rootObjectStr !== '') {
       try {
-        const evalFunc = new Function(
+        const evalFunc = this._createScopedFunction(
           'scope',
           `with(scope) { return ${rootObjectStr}; }`
-        );
+        ) as (scope: any) => any;
         rootObject = evalFunc(globalScope);
       } catch {
         return {
@@ -880,10 +919,10 @@ export class JavaScriptExecutor {
 
     try {
       // Try to evaluate the expression in the global scope
-      const evalFunc = new Function(
+      const evalFunc = this._createScopedFunction(
         'scope',
         `with(scope) { return ${expression}; }`
-      );
+      ) as (scope: any) => any;
       const value = evalFunc(this._globalScope);
 
       // Build inspection data
@@ -989,7 +1028,21 @@ export class JavaScriptExecutor {
    * Add code to export top-level variables to global scope.
    */
   private _addToGlobalThisCode(key: string, identifier = key): string {
-    return `globalThis["${key}"] = ${identifier};`;
+    // Keep declarations on both globalThis and this for compatibility with
+    // different runtime invocation paths.
+    return `globalThis["${key}"] = this["${key}"] = ${identifier};`;
+  }
+
+  /**
+   * Create a function using the runtime realm's Function constructor.
+   */
+  private _createScopedFunction(...args: string[]): JSCallable {
+    const scopeFunction = this._globalScope.Function;
+    const functionConstructor =
+      typeof scopeFunction === 'function'
+        ? (scopeFunction as FunctionConstructor)
+        : Function;
+    return functionConstructor(...args) as JSCallable;
   }
 
   /**
@@ -1013,43 +1066,64 @@ export class JavaScriptExecutor {
     for (const node of ast.body) {
       if (node.type === 'FunctionDeclaration') {
         const name = node.id.name;
-        extraCode.push(`globalThis["${name}"] = ${name};`);
+        extraCode.push(this._addToGlobalThisCode(name));
       } else if (node.type === 'ClassDeclaration') {
         const name = node.id.name;
-        extraCode.push(`globalThis["${name}"] = ${name};`);
+        extraCode.push(this._addToGlobalThisCode(name));
       } else if (node.type === 'VariableDeclaration') {
         const declarations = node.declarations;
 
         for (const declaration of declarations) {
-          const declarationType = declaration.id.type;
-
-          if (declarationType === 'ObjectPattern') {
-            // Handle object destructuring: const { a, b } = obj or const { a: b } = obj
-            for (const prop of declaration.id.properties) {
-              // For { a: b }, key is 'a' but local variable is 'b'
-              // For { a }, key and value are both 'a'
-              const localName =
-                prop.value?.type === 'Identifier'
-                  ? prop.value.name
-                  : prop.key.name;
-              extraCode.push(this._addToGlobalThisCode(localName));
-            }
-          } else if (declarationType === 'ArrayPattern') {
-            // Handle array destructuring: const [a, b] = arr
-            const keys = declaration.id.elements
-              .filter((el: any) => el !== null)
-              .map((element: any) => element.name);
-            for (const key of keys) {
-              extraCode.push(this._addToGlobalThisCode(key));
-            }
-          } else if (declarationType === 'Identifier') {
-            extraCode.push(this._addToGlobalThisCode(declaration.id.name));
+          const identifiers: string[] = [];
+          this._collectDeclaredIdentifiers(declaration.id, identifiers);
+          for (const name of identifiers) {
+            extraCode.push(this._addToGlobalThisCode(name));
           }
         }
       }
     }
 
     return extraCode.join('\n');
+  }
+
+  /**
+   * Collect identifiers from a declaration pattern.
+   */
+  private _collectDeclaredIdentifiers(
+    pattern: any,
+    identifiers: string[]
+  ): void {
+    if (!pattern) {
+      return;
+    }
+
+    switch (pattern.type) {
+      case 'Identifier':
+        identifiers.push(pattern.name);
+        break;
+      case 'ObjectPattern':
+        for (const prop of pattern.properties) {
+          if (prop.type === 'Property') {
+            this._collectDeclaredIdentifiers(prop.value, identifiers);
+          } else if (prop.type === 'RestElement') {
+            this._collectDeclaredIdentifiers(prop.argument, identifiers);
+          }
+        }
+        break;
+      case 'ArrayPattern':
+        for (const element of pattern.elements) {
+          this._collectDeclaredIdentifiers(element, identifiers);
+        }
+        break;
+      case 'AssignmentPattern':
+        this._collectDeclaredIdentifiers(pattern.left, identifiers);
+        break;
+      case 'RestElement':
+        this._collectDeclaredIdentifiers(pattern.argument, identifiers);
+        break;
+      default:
+        break;
+    }
   }
 
   /**
@@ -1100,7 +1174,7 @@ export class JavaScriptExecutor {
           lastNodeExprStart,
           lastNodeExprEnd
         );
-        const extraReturnCode = `return [${codeOfLastNode}];`;
+        const extraReturnCode = `return ${codeOfLastNode};`;
 
         return {
           withReturn: true,
@@ -1171,6 +1245,7 @@ export class JavaScriptExecutor {
 
       if (node.type === 'ImportDeclaration') {
         const importSource = this._transformImportSource(node.source.value);
+        const importSourceCode = JSON.stringify(importSource);
 
         if (node.specifiers.length === 0) {
           // Side-effect import: import 'module'
@@ -1178,7 +1253,7 @@ export class JavaScriptExecutor {
             modifiedUserCode,
             node.start,
             node.end,
-            `await import("${importSource}");\n`
+            `await import(${importSourceCode});\n`
           );
         } else {
           let hasDefaultImport = false;
@@ -1207,36 +1282,39 @@ export class JavaScriptExecutor {
             }
           }
 
-          let newCodeOfNode = '';
+          const importBinding = `__jsKernelImport${i}`;
+          let newCodeOfNode = `const ${importBinding} = await import(${importSourceCode});\n`;
 
+          const destructuredNames: string[] = [];
           if (hasDefaultImport) {
-            newCodeOfNode += `const { default: ${defaultImportName} } = await import("${importSource}");\n`;
+            destructuredNames.push(`default: ${defaultImportName}`);
             codeAddToGlobalScope +=
               this._addToGlobalThisCode(defaultImportName);
           }
 
-          if (hasNamespaceImport) {
-            newCodeOfNode += `const ${namespaceImportName} = await import("${importSource}");\n`;
-            codeAddToGlobalScope +=
-              this._addToGlobalThisCode(namespaceImportName);
-          }
-
           if (importedNames.length > 0) {
-            newCodeOfNode += 'const { ';
             for (let j = 0; j < importedNames.length; j++) {
               // Handle aliased imports: import { foo as bar } -> const { foo: bar }
-              if (importedNames[j] !== localNames[j]) {
-                newCodeOfNode += `${importedNames[j]}: ${localNames[j]}`;
-              } else {
-                newCodeOfNode += importedNames[j];
-              }
+              destructuredNames.push(
+                importedNames[j] !== localNames[j]
+                  ? `${importedNames[j]}: ${localNames[j]}`
+                  : importedNames[j]
+              );
               // Use local name for globalThis assignment since that's what's in scope
               codeAddToGlobalScope += this._addToGlobalThisCode(localNames[j]);
-              if (j < importedNames.length - 1) {
-                newCodeOfNode += ', ';
-              }
             }
-            newCodeOfNode += ` } = await import("${importSource}");\n`;
+          }
+
+          if (destructuredNames.length > 0) {
+            newCodeOfNode += `const { ${destructuredNames.join(
+              ', '
+            )} } = ${importBinding};\n`;
+          }
+
+          if (hasNamespaceImport) {
+            newCodeOfNode += `const ${namespaceImportName} = ${importBinding};\n`;
+            codeAddToGlobalScope +=
+              this._addToGlobalThisCode(namespaceImportName);
           }
 
           modifiedUserCode = this._replaceCode(
@@ -1385,32 +1463,95 @@ export class JavaScriptExecutor {
    * Check if value is a DOM element.
    */
   private _isDOMElement(value: any): boolean {
-    return typeof HTMLElement !== 'undefined' && value instanceof HTMLElement;
+    return (
+      this._isInstanceOfRealm(
+        value,
+        'HTMLElement',
+        typeof HTMLElement === 'undefined' ? undefined : HTMLElement
+      ) ||
+      this._isInstanceOfRealm(
+        value,
+        'SVGElement',
+        typeof SVGElement === 'undefined' ? undefined : SVGElement
+      )
+    );
   }
 
   /**
    * Get MIME bundle for DOM elements.
    */
-  private _getDOMElementMimeBundle(element: HTMLElement): IMimeBundle {
+  private _getDOMElementMimeBundle(element: any): IMimeBundle {
+    const isCanvasElement =
+      this._isInstanceOfRealm(
+        element,
+        'HTMLCanvasElement',
+        typeof HTMLCanvasElement === 'undefined' ? undefined : HTMLCanvasElement
+      ) ||
+      (typeof element?.toDataURL === 'function' &&
+        typeof element?.getContext === 'function');
+
     // For canvas elements, try to get image data
-    if (element instanceof HTMLCanvasElement) {
+    if (isCanvasElement) {
+      const canvas = element as HTMLCanvasElement;
       try {
-        const dataUrl = element.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
         const base64 = dataUrl.split(',')[1];
         return {
           'image/png': base64,
-          'text/plain': `<canvas width="${element.width}" height="${element.height}">`
+          'text/plain': `<canvas width="${canvas.width}" height="${canvas.height}">`
         };
       } catch {
-        return { 'text/plain': element.outerHTML };
+        const canvasHtml =
+          typeof canvas.outerHTML === 'string'
+            ? canvas.outerHTML
+            : '<canvas></canvas>';
+        return { 'text/plain': canvasHtml };
       }
     }
 
     // For other elements, return HTML
+    const elementHtml =
+      typeof element?.outerHTML === 'string'
+        ? element.outerHTML
+        : String(element);
     return {
-      'text/html': element.outerHTML,
-      'text/plain': element.outerHTML
+      'text/html': elementHtml,
+      'text/plain': elementHtml
     };
+  }
+
+  /**
+   * Check `instanceof` against runtime-realm constructors when available.
+   */
+  private _isInstanceOfRealm(
+    value: any,
+    ctorName: string,
+    fallbackCtor?: any
+  ): boolean {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    const scopeCtor = this._globalScope?.[ctorName];
+    if (typeof scopeCtor === 'function') {
+      try {
+        if (value instanceof scopeCtor) {
+          return true;
+        }
+      } catch {
+        // Ignore invalid instanceof checks.
+      }
+    }
+
+    if (typeof fallbackCtor === 'function') {
+      try {
+        return value instanceof fallbackCtor;
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -1821,5 +1962,5 @@ export class JavaScriptExecutor {
   }
 
   private _config: ExecutorConfig;
-  private _globalScope: Window;
+  private _globalScope: Record<string, any>;
 }

@@ -29,6 +29,115 @@ To remove the extension, execute:
 pip uninstall jupyterlite-javascript-kernel
 ```
 
+## Runtime modes
+
+The extension currently registers two JavaScript kernelspecs:
+
+- `JavaScript`:
+  Runs code in a sandboxed `iframe`. Use this when your code needs browser DOM APIs like `document`, `window`, or canvas access through the page context.
+- `JavaScript (Worker)`:
+  Runs code in a dedicated Web Worker. Use this for stronger isolation and to avoid blocking the main UI thread.
+
+Pick either kernel from the notebook kernel selector in JupyterLite.
+
+### Worker mode limitations
+
+Web Workers do not expose DOM APIs. In `JavaScript (Worker)`, APIs such as `document`, direct element access, and other main-thread-only browser APIs are unavailable.
+
+### Import side effects in iframe mode
+
+In `JavaScript` (iframe mode), user code and imports execute in the runtime iframe scope.
+
+By default, module-level side effects stay in the runtime iframe. To intentionally affect the main page (`window.parent`), access it directly.
+
+Cell declarations like `var`, `let`, `const`, `function`, and `class` remain in the runtime scope. Host-page mutations happen when your code (or imported code) explicitly reaches `window.parent`.
+
+#### Example: canvas-confetti
+
+```javascript
+import confetti from 'canvas-confetti';
+
+const canvas = window.parent.document.createElement('canvas');
+Object.assign(canvas.style, {
+  position: 'fixed',
+  inset: '0',
+  width: '100%',
+  height: '100%',
+  pointerEvents: 'none',
+  zIndex: '2147483647'
+});
+window.parent.document.body.appendChild(canvas);
+
+const fire = confetti.create(canvas, { resize: true, useWorker: true });
+
+fire({ particleCount: 20, spread: 70 });
+```
+
+#### Example: p5.js
+
+```javascript
+import p5 from 'p5';
+
+const mount = window.parent.document.createElement('div');
+Object.assign(mount.style, {
+  position: 'fixed',
+  right: '16px',
+  bottom: '16px',
+  zIndex: '1000'
+});
+window.parent.document.body.appendChild(mount);
+
+const sketch = new p5(p => {
+  p.setup = () => {
+    p.createCanvas(120, 80);
+    p.noLoop();
+  };
+}, mount);
+```
+
+#### Can side effects be auto-detected and cleaned up?
+
+Partially, yes, but not perfectly. This project currently does not provide automatic side-effect cleanup for host-page mutations.
+
+Limits of automatic cleanup:
+
+- It will not reliably undo monkey-patched globals.
+- It will not automatically remove all event listeners or timers.
+- It cannot safely revert all stateful third-party module internals.
+
+### Enable or disable specific modes
+
+The two runtime modes are registered by separate plugins:
+
+- `@jupyterlite/javascript-kernel-extension:kernel-iframe`
+- `@jupyterlite/javascript-kernel-extension:kernel-worker`
+
+You can disable either one using `disabledExtensions` in `jupyter-config-data`.
+
+Disable worker mode:
+
+```json
+{
+  "jupyter-config-data": {
+    "disabledExtensions": [
+      "@jupyterlite/javascript-kernel-extension:kernel-worker"
+    ]
+  }
+}
+```
+
+Disable iframe mode:
+
+```json
+{
+  "jupyter-config-data": {
+    "disabledExtensions": [
+      "@jupyterlite/javascript-kernel-extension:kernel-iframe"
+    ]
+  }
+}
+```
+
 ## Contributing
 
 ### Development install

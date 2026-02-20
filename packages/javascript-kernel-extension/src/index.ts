@@ -11,45 +11,91 @@ import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 
 import { JavaScriptKernel } from '@jupyterlite/javascript-kernel';
+import type { RuntimeMode } from '@jupyterlite/javascript-kernel';
 
 import jsLogo32 from '../style/icons/logo-32x32.png';
 
 import jsLogo64 from '../style/icons/logo-64x64.png';
 
 /**
- * A plugin to register the JavaScript kernel.
+ * Register a JavaScript kernelspec for a given runtime.
  */
-const kernel: JupyterFrontEndPlugin<void> = {
-  id: '@jupyterlite/javascript-kernel-extension:kernel',
+interface IRegisterKernelOptions {
+  name: string;
+  displayName: string;
+  runtime: RuntimeMode;
+}
+
+const registerKernel = (
+  kernelspecs: IKernelSpecs,
+  options: IRegisterKernelOptions
+) => {
+  const { name, displayName, runtime } = options;
+
+  kernelspecs.register({
+    spec: {
+      name,
+      display_name: displayName,
+      language: 'javascript',
+      argv: [],
+      spec: {
+        argv: [],
+        env: {},
+        display_name: displayName,
+        language: 'javascript',
+        interrupt_mode: 'message',
+        metadata: {
+          runtime
+        }
+      },
+      resources: {
+        'logo-32x32': jsLogo32,
+        'logo-64x64': jsLogo64
+      }
+    },
+    create: async (options: IKernel.IOptions): Promise<IKernel> => {
+      return new JavaScriptKernel({
+        ...options,
+        runtime
+      } as JavaScriptKernel.IOptions);
+    }
+  });
+};
+
+/**
+ * Plugin registering the iframe JavaScript kernel.
+ */
+const kernelIFrame: JupyterFrontEndPlugin<void> = {
+  id: '@jupyterlite/javascript-kernel-extension:kernel-iframe',
   autoStart: true,
   requires: [IKernelSpecs],
   activate: (app: JupyterFrontEnd, kernelspecs: IKernelSpecs) => {
-    kernelspecs.register({
-      spec: {
-        name: 'javascript',
-        display_name: 'JavaScript',
-        language: 'javascript',
-        argv: [],
-        spec: {
-          argv: [],
-          env: {},
-          display_name: 'JavaScript',
-          language: 'javascript',
-          interrupt_mode: 'message',
-          metadata: {}
-        },
-        resources: {
-          'logo-32x32': jsLogo32,
-          'logo-64x64': jsLogo64
-        }
-      },
-      create: async (options: IKernel.IOptions): Promise<IKernel> => {
-        return new JavaScriptKernel(options);
-      }
+    void app;
+    registerKernel(kernelspecs, {
+      name: 'javascript',
+      displayName: 'JavaScript',
+      runtime: 'iframe'
     });
   }
 };
 
-const plugins: JupyterFrontEndPlugin<void>[] = [kernel];
+/**
+ * Plugin registering the worker JavaScript kernel.
+ */
+const kernelWorker: JupyterFrontEndPlugin<void> = {
+  id: '@jupyterlite/javascript-kernel-extension:kernel-worker',
+  autoStart: true,
+  requires: [IKernelSpecs],
+  activate: (app: JupyterFrontEnd, kernelspecs: IKernelSpecs) => {
+    void app;
+    registerKernel(kernelspecs, {
+      name: 'javascript-worker',
+      displayName: 'JavaScript (Worker)',
+      runtime: 'worker'
+    });
+  }
+};
+
+const plugins: JupyterFrontEndPlugin<void>[] = [kernelIFrame, kernelWorker];
 
 export default plugins;

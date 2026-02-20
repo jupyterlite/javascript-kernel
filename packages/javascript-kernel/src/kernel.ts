@@ -5,12 +5,16 @@ import type { KernelMessage } from '@jupyterlab/services';
 
 import { BaseKernel, type IKernel } from '@jupyterlite/services';
 
-import { PromiseDelegate } from '@lumino/coreutils';
-
-import { JavaScriptExecutor } from './executor';
+import type { JavaScriptExecutor } from './executor';
+import {
+  IFrameRuntimeBackend,
+  IRuntimeBackend,
+  WorkerRuntimeBackend
+} from './runtime_backends';
+import type { RuntimeMode, RuntimeOutputMessage } from './runtime_protocol';
 
 /**
- * A kernel that executes JavaScript code in an IFrame.
+ * A kernel that executes JavaScript code in browser runtimes.
  */
 export class JavaScriptKernel extends BaseKernel implements IKernel {
   /**
@@ -20,7 +24,9 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    */
   constructor(options: JavaScriptKernel.IOptions) {
     super(options);
-    this.initIFrame();
+    this._runtimeMode = options.runtime ?? 'iframe';
+    this._executorFactory = options.executorFactory;
+    this._backend = this.createBackend(this._runtimeMode);
   }
 
   /**
@@ -30,37 +36,32 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     if (this.isDisposed) {
       return;
     }
-    this.cleanupIFrame();
+
+    this._backend.dispose();
     super.dispose();
   }
 
   /**
-   * A promise that is fulfilled when the kernel is ready.
+   * A promise that is fulfilled when the kernel runtime is ready.
    */
   get ready(): Promise<void> {
-    return this._ready.promise;
+    return this._backend.ready;
   }
 
   /**
-   * Get the executor instance.
-   * Subclasses can use this to access executor functionality.
+   * The active runtime backend.
    */
-  protected get executor(): JavaScriptExecutor | undefined {
-    return this._executor;
-  }
-
-  /**
-   * Get the iframe element.
-   * Subclasses can use this for custom iframe operations.
-   */
-  protected get iframe(): HTMLIFrameElement {
-    return this._iframe;
+  protected get runtimeBackend(): IRuntimeBackend {
+    return this._backend;
   }
 
   /**
    * Handle a kernel_info_request message.
    */
   async kernelInfoRequest(): Promise<KernelMessage.IInfoReplyMsg['content']> {
+    const runtimeName =
+      this._runtimeMode === 'worker' ? 'Web Worker' : 'IFrame';
+
     const content: KernelMessage.IInfoReply = {
       implementation: 'JavaScript',
       implementation_version: '0.1.0',
@@ -77,7 +78,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
       },
       protocol_version: '5.3',
       status: 'ok',
-      banner: 'A JavaScript kernel running in the browser',
+      banner: `A JavaScript kernel running in the browser (${runtimeName})`,
       help_links: [
         {
           text: 'JavaScript Kernel',
@@ -85,94 +86,51 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
         }
       ]
     };
+
     return content;
   }
 
   /**
    * Handle an `execute_request` message.
-   *
-   * @param content - The content of the request.
    */
   async executeRequest(
     content: KernelMessage.IExecuteRequestMsg['content']
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
-    const { code } = content;
-
-    if (!this._executor) {
-      return {
-        status: 'error',
-        execution_count: this.executionCount,
-        ename: 'ExecutorError',
-        evalue: 'Executor not initialized',
-        traceback: []
-      };
-    }
-
     try {
-      // Use the executor to create an async function from the code
-      const { asyncFunction, withReturn } =
-        this._executor.makeAsyncFromCode(code);
-
-      // Execute the async function in the iframe context
-      const resultPromise = this._evalFunc(
-        this._iframe.contentWindow,
-        asyncFunction
-      );
-
-      if (withReturn) {
-        const resultHolder = await resultPromise;
-        const result = resultHolder[0];
-        // Skip undefined results (e.g., from console.log)
-        if (result !== undefined) {
-          const data = this._executor.getMimeBundle(result);
-
-          this.publishExecuteResult({
-            execution_count: this.executionCount,
-            data,
-            metadata: {}
-          });
-        }
-      } else {
-        await resultPromise;
-      }
-
-      return {
-        status: 'ok',
-        execution_count: this.executionCount,
-        user_expressions: {}
-      };
-    } catch (e) {
-      const error = e as Error;
-      const { name, message } = error;
-
-      // Use executor to clean stack trace
-      const cleanedStack = this._executor.cleanStackTrace(error);
+      await this.ready;
+      return await this._backend.execute(content.code, this.executionCount);
+    } catch (error) {
+      const normalized = this.normalizeError(error);
+      const traceback = [
+        normalized.stack || normalized.message || String(error)
+      ];
 
       this.publishExecuteError({
-        ename: name || 'Error',
-        evalue: message || '',
-        traceback: [cleanedStack]
+        ename: normalized.name || 'RuntimeError',
+        evalue: normalized.message || '',
+        traceback
       });
 
       return {
         status: 'error',
         execution_count: this.executionCount,
-        ename: name || 'Error',
-        evalue: message || '',
-        traceback: [cleanedStack]
+        ename: normalized.name || 'RuntimeError',
+        evalue: normalized.message || '',
+        traceback
       };
     }
   }
 
   /**
-   * Handle a complete_request message.
-   *
-   * @param content - The content of the request.
+   * Handle a `complete_request` message.
    */
   async completeRequest(
     content: KernelMessage.ICompleteRequestMsg['content']
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
-    if (!this._executor) {
+    try {
+      await this.ready;
+      return await this._backend.complete(content.code, content.cursor_pos);
+    } catch {
       return {
         matches: [],
         cursor_start: content.cursor_pos,
@@ -181,30 +139,22 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
         status: 'ok'
       };
     }
-
-    const { code, cursor_pos } = content;
-    const result = this._executor.completeRequest(code, cursor_pos);
-
-    return {
-      matches: result.matches,
-      cursor_start: result.cursorStart,
-      cursor_end: result.cursorEnd || cursor_pos,
-      metadata: {},
-      status: 'ok'
-    };
   }
 
   /**
    * Handle an `inspect_request` message.
-   *
-   * @param content - The content of the request.
-   *
-   * @returns A promise that resolves with the response message.
    */
   async inspectRequest(
     content: KernelMessage.IInspectRequestMsg['content']
   ): Promise<KernelMessage.IInspectReplyMsg['content']> {
-    if (!this._executor) {
+    try {
+      await this.ready;
+      return await this._backend.inspect(
+        content.code,
+        content.cursor_pos,
+        content.detail_level
+      );
+    } catch {
       return {
         status: 'ok',
         found: false,
@@ -212,49 +162,26 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
         metadata: {}
       };
     }
-
-    const { code, cursor_pos, detail_level } = content;
-    const result = this._executor.inspect(code, cursor_pos, detail_level);
-
-    return {
-      status: 'ok',
-      found: result.found,
-      data: result.data,
-      metadata: result.metadata
-    };
   }
 
   /**
    * Handle an `is_complete_request` message.
-   *
-   * @param content - The content of the request.
-   *
-   * @returns A promise that resolves with the response message.
    */
   async isCompleteRequest(
     content: KernelMessage.IIsCompleteRequestMsg['content']
   ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
-    if (!this._executor) {
+    try {
+      await this.ready;
+      return await this._backend.isComplete(content.code);
+    } catch {
       return {
         status: 'unknown'
       };
     }
-
-    const { code } = content;
-    const result = this._executor.isComplete(code);
-
-    return {
-      status: result.status,
-      indent: result.indent || ''
-    };
   }
 
   /**
    * Handle a `comm_info_request` message.
-   *
-   * @param content - The content of the request.
-   *
-   * @returns A promise that resolves with the response message.
    */
   async commInfoRequest(
     content: KernelMessage.ICommInfoRequestMsg['content']
@@ -267,8 +194,6 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
 
   /**
    * Send an `input_reply` message.
-   *
-   * @param content - The content of the reply.
    */
   inputReply(content: KernelMessage.IInputReplyMsg['content']): void {
     throw new Error('Not implemented');
@@ -276,8 +201,6 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
 
   /**
    * Send an `comm_open` message.
-   *
-   * @param msg - The comm_open message.
    */
   async commOpen(msg: KernelMessage.ICommOpenMsg): Promise<void> {
     throw new Error('Not implemented');
@@ -285,8 +208,6 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
 
   /**
    * Send an `comm_msg` message.
-   *
-   * @param msg - The comm_msg message.
    */
   async commMsg(msg: KernelMessage.ICommMsgMsg): Promise<void> {
     throw new Error('Not implemented');
@@ -294,249 +215,186 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
 
   /**
    * Send an `comm_close` message.
-   *
-   * @param close - The comm_close message.
    */
   async commClose(msg: KernelMessage.ICommCloseMsg): Promise<void> {
     throw new Error('Not implemented');
   }
 
   /**
-   * Execute code in the kernel IFrame.
-   *
-   * @param code - The code to execute.
+   * Called once a runtime backend is initialized, before `ready` resolves.
    */
-  protected evaluate(code: string): any {
-    return this._evalCodeFunc(this._iframe.contentWindow, code);
+  protected async onRuntimeReady(
+    _context: JavaScriptKernel.IRuntimeReadyContext
+  ): Promise<void> {
+    return Promise.resolve();
   }
 
   /**
-   * Initialize the IFrame and set up communication.
+   * Create a runtime backend for the selected mode.
    */
-  protected async initIFrame(): Promise<void> {
-    this._container = document.createElement('div');
-    this._container.style.cssText =
-      'position:absolute;width:0;height:0;overflow:hidden;';
-    document.body.appendChild(this._container);
-
-    // Create the iframe with sandbox permissions
-    this._iframe = document.createElement('iframe');
-    this._iframe.sandbox.add('allow-scripts', 'allow-same-origin');
-    this._iframe.style.cssText = 'border:none;width:100%;height:100%;';
-
-    this._iframe.srcdoc = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>JavaScript Kernel</title>
-</head>
-<body></body>
-</html>`;
-
-    this._container.appendChild(this._iframe);
-
-    // Wait for iframe to load
-    await new Promise<void>(resolve => {
-      this._iframe.onload = () => resolve();
-    });
-
-    // Set up console overrides in the iframe
-    this.setupConsoleOverrides();
-
-    // Set up message handling for console output
-    this._messageHandler = (event: MessageEvent) => {
-      if (event.source === this._iframe.contentWindow) {
-        this.processMessage(event.data);
+  protected createBackend(runtimeMode: RuntimeMode): IRuntimeBackend {
+    const options = {
+      onOutput: (message: RuntimeOutputMessage) => {
+        this.processRuntimeMessage(message);
       }
     };
-    window.addEventListener('message', this._messageHandler);
 
-    // Initialize the executor with the iframe's window
-    if (this._iframe.contentWindow) {
-      this._executor = new JavaScriptExecutor(this._iframe.contentWindow);
-      this.setupDisplay();
+    if (runtimeMode === 'worker') {
+      return new WorkerRuntimeBackend({
+        ...options,
+        onReady: async context => {
+          await this.onRuntimeReady({
+            runtime: 'worker',
+            execute: async code => {
+              const reply = await context.execute(code);
+              if (reply.status === 'error') {
+                throw this.createRuntimeInitializationError(reply);
+              }
+              return reply;
+            }
+          });
+        }
+      });
     }
 
-    this._ready.resolve();
-  }
-
-  /**
-   * Set up the display() function in the iframe.
-   */
-  protected setupDisplay(): void {
-    if (!this._iframe.contentWindow || !this._executor) {
-      return;
-    }
-
-    const executor = this._executor;
-
-    // Create display function that uses executor's getMimeBundle
-    // and calls kernel's displayData directly
-    const display = (obj: any, metadata?: Record<string, any>) => {
-      const data = executor.getMimeBundle(obj);
-      this.displayData(
-        { data, metadata: metadata ?? {}, transient: {} },
-        this.parentHeader
-      );
-    };
-
-    // Expose display in the iframe's global scope
-    (this._iframe.contentWindow as any).display = display;
-  }
-
-  /**
-   * Set up console overrides in the iframe to bubble output to parent.
-   */
-  protected setupConsoleOverrides(): void {
-    if (!this._iframe.contentWindow) {
-      return;
-    }
-
-    this._evalCodeFunc(
-      this._iframe.contentWindow,
-      `
-      console._log = console.log;
-      console._error = console.error;
-      window._bubbleUp = function(msg) {
-        window.parent.postMessage(msg, '*');
-      };
-      console.log = function() {
-        const args = Array.prototype.slice.call(arguments);
-        window._bubbleUp({
-          type: 'stream',
-          bundle: { name: 'stdout', text: args.join(' ') + '\\n' }
+    return new IFrameRuntimeBackend({
+      ...options,
+      executorFactory: this._executorFactory,
+      onReady: async context => {
+        await this.onRuntimeReady({
+          runtime: 'iframe',
+          globalScope: context.globalScope,
+          executor: context.evaluator.executor,
+          execute: async code => Promise.resolve(context.evaluate(code))
         });
-      };
-      console.info = console.log;
-      console.error = function() {
-        const args = Array.prototype.slice.call(arguments);
-        window._bubbleUp({
-          type: 'stream',
-          bundle: { name: 'stderr', text: args.join(' ') + '\\n' }
-        });
-      };
-      console.warn = console.error;
-      window.onerror = function(message, source, lineno, colno, error) {
-        console.error(message);
-      };
-    `
-    );
+      }
+    });
   }
 
   /**
-   * Clean up the iframe resources.
+   * Route runtime output messages to Jupyter kernel channels.
    */
-  protected cleanupIFrame(): void {
-    if (this._messageHandler) {
-      window.removeEventListener('message', this._messageHandler);
-      this._messageHandler = null;
-    }
-    this._iframe.remove();
-    if (this._container) {
-      this._container.remove();
-      this._container = null;
-    }
-  }
-
-  /**
-   * Process a message coming from the IFrame.
-   *
-   * @param msg - The message to process.
-   */
-  protected processMessage(msg: any): void {
-    if (!msg || !msg.type) {
-      return;
-    }
-
+  protected processRuntimeMessage(message: RuntimeOutputMessage): void {
     const parentHeader = this.parentHeader;
 
-    switch (msg.type) {
-      case 'stream': {
-        const bundle = msg.bundle ?? { name: 'stdout', text: '' };
-        this.stream(bundle, parentHeader);
+    switch (message.type) {
+      case 'stream':
+        this.stream(message.bundle, parentHeader);
         break;
-      }
-      case 'input_request': {
-        const bundle = msg.content ?? { prompt: '', password: false };
-        this.inputRequest(bundle, parentHeader);
+      case 'input_request':
+        this.inputRequest(message.content, parentHeader);
         break;
-      }
-      case 'display_data': {
-        const bundle = msg.bundle ?? { data: {}, metadata: {}, transient: {} };
-        this.displayData(bundle, parentHeader);
+      case 'display_data':
+        this.displayData(message.bundle, parentHeader);
         break;
-      }
-      case 'update_display_data': {
-        const bundle = msg.bundle ?? { data: {}, metadata: {}, transient: {} };
-        this.updateDisplayData(bundle, parentHeader);
+      case 'update_display_data':
+        this.updateDisplayData(message.bundle, parentHeader);
         break;
-      }
-      case 'clear_output': {
-        const bundle = msg.bundle ?? { wait: false };
-        this.clearOutput(bundle, parentHeader);
+      case 'clear_output':
+        this.clearOutput(message.bundle, parentHeader);
         break;
-      }
-      case 'execute_result': {
-        const bundle = msg.bundle ?? {
-          execution_count: 0,
-          data: {},
-          metadata: {}
-        };
-        this.publishExecuteResult(bundle, parentHeader);
+      case 'execute_result':
+        this.publishExecuteResult(message.bundle, parentHeader);
         break;
-      }
-      case 'execute_error': {
-        const bundle = msg.bundle ?? { ename: '', evalue: '', traceback: [] };
-        this.publishExecuteError(bundle, parentHeader);
+      case 'execute_error':
+        this.publishExecuteError(message.bundle, parentHeader);
         break;
-      }
-      case 'comm_msg':
-      case 'comm_open':
-      case 'comm_close': {
-        this.handleComm(
-          msg.type,
-          msg.content,
-          msg.metadata,
-          msg.buffers,
-          msg.parentHeader
-        );
+      default:
         break;
-      }
     }
   }
 
   /**
-   * Execute an async function in the iframe context.
+   * Normalize unknown thrown values into Error instances.
    */
-  private _evalFunc = (win: Window | null, asyncFunc: () => Promise<any>) => {
-    if (!win) {
-      throw new Error('IFrame window not available');
+  protected normalizeError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error;
     }
-    return asyncFunc.call(win);
-  };
+
+    return new Error(String(error));
+  }
 
   /**
-   * Execute raw code string in the iframe context.
+   * Normalize an execute reply error into an Error instance.
    */
-  private _evalCodeFunc = new Function(
-    'window',
-    'code',
-    'return window.eval(code);'
-  ) as (win: Window | null, code: string) => any;
+  private createRuntimeInitializationError(
+    reply: KernelMessage.IExecuteReplyMsg['content']
+  ): Error {
+    const ename =
+      'ename' in reply && typeof reply.ename === 'string'
+        ? reply.ename
+        : 'RuntimeError';
+    const evalue =
+      'evalue' in reply && typeof reply.evalue === 'string'
+        ? reply.evalue
+        : 'Runtime initialization failed';
+    const error = new Error(evalue);
+    error.name = ename;
 
-  private _iframe!: HTMLIFrameElement;
-  private _container: HTMLDivElement | null = null;
-  private _messageHandler: ((event: MessageEvent) => void) | null = null;
-  private _executor?: JavaScriptExecutor;
-  private _ready = new PromiseDelegate<void>();
+    const traceback =
+      'traceback' in reply && Array.isArray(reply.traceback)
+        ? reply.traceback
+        : [];
+    if (traceback.length > 0) {
+      error.stack = traceback.join('\n');
+    }
+
+    return error;
+  }
+
+  private _backend: IRuntimeBackend;
+  private _executorFactory?: JavaScriptKernel.IExecutorFactory;
+  private _runtimeMode: RuntimeMode;
 }
 
 /**
- * A namespace for JavaScriptKernel statics
+ * A namespace for JavaScriptKernel statics.
  */
 export namespace JavaScriptKernel {
   /**
+   * Runtime context shared by all backend initialization hooks.
+   */
+  export interface IRuntimeReadyContextBase {
+    runtime: RuntimeMode;
+    execute: (code: string) => Promise<unknown>;
+  }
+
+  /**
+   * Runtime context for iframe backend initialization.
+   */
+  export interface IIFrameRuntimeReadyContext extends IRuntimeReadyContextBase {
+    runtime: 'iframe';
+    globalScope: Record<string, any>;
+    executor: JavaScriptExecutor;
+  }
+
+  /**
+   * Runtime context for worker backend initialization.
+   */
+  export interface IWorkerRuntimeReadyContext extends IRuntimeReadyContextBase {
+    runtime: 'worker';
+  }
+
+  /**
+   * Runtime context available from `onRuntimeReady`.
+   */
+  export type IRuntimeReadyContext =
+    | IIFrameRuntimeReadyContext
+    | IWorkerRuntimeReadyContext;
+
+  /**
+   * Factory used to customize the iframe runtime executor.
+   */
+  export type IExecutorFactory = (
+    globalScope: Record<string, any>
+  ) => JavaScriptExecutor;
+
+  /**
    * The instantiation options for a JavaScript kernel.
    */
-  export interface IOptions extends IKernel.IOptions {}
+  export interface IOptions extends IKernel.IOptions {
+    runtime?: RuntimeMode;
+    executorFactory?: IExecutorFactory;
+  }
 }
