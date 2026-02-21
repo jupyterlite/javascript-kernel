@@ -1,6 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import type { KernelMessage } from '@jupyterlab/services';
+
 /**
  * MIME bundle for rich display.
  */
@@ -11,13 +13,12 @@ export interface IMimeBundle {
 /**
  * Display request from display().
  */
-export interface IDisplayData {
+export type IDisplayData = Omit<
+  KernelMessage.IDisplayDataMsg['content'],
+  'data'
+> & {
   data: IMimeBundle;
-  metadata: Record<string, any>;
-  transient?: {
-    display_id?: string;
-  };
-}
+};
 
 /**
  * Callbacks for display operations.

@@ -1,6 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import type { KernelMessage } from '@jupyterlab/services';
+
 import { parseScript } from 'meriyah';
 import { generate } from 'astring';
 
@@ -61,19 +63,14 @@ export interface ICompletionResult {
 /**
  * Result of code completeness check.
  */
-export interface IIsCompleteResult {
-  status: 'complete' | 'incomplete' | 'invalid' | 'unknown';
-  indent?: string;
-}
+export type IIsCompleteResult =
+  | KernelMessage.IIsCompleteReplyIncomplete
+  | KernelMessage.IIsCompleteReplyOther;
 
 /**
  * Result of code inspection.
  */
-export interface IInspectResult {
-  found: boolean;
-  data: IMimeBundle;
-  metadata: Record<string, any>;
-}
+export type IInspectResult = KernelMessage.IInspectReply;
 
 /**
  * Registry for tracking code declarations across cells.
@@ -904,13 +901,14 @@ export class JavaScriptExecutor {
   inspect(
     code: string,
     cursorPos: number,
-    detailLevel: number = 0
+    detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level'] = 0
   ): IInspectResult {
     // Extract the word/expression at cursor position
     const expression = this._extractExpressionAtCursor(code, cursorPos);
 
     if (!expression) {
       return {
+        status: 'ok',
         found: false,
         data: {},
         metadata: {}
@@ -933,6 +931,7 @@ export class JavaScriptExecutor {
       );
 
       return {
+        status: 'ok',
         found: true,
         data: inspectionData,
         metadata: {}
@@ -965,6 +964,7 @@ export class JavaScriptExecutor {
     const doc = this.getBuiltinDocumentation(expression);
     if (doc) {
       return {
+        status: 'ok',
         found: true,
         data: {
           'text/plain': `${expression}: ${doc}`,
@@ -978,6 +978,7 @@ export class JavaScriptExecutor {
     const suggestions = this._findSimilarNames(expression);
     if (suggestions.length > 0) {
       return {
+        status: 'ok',
         found: true,
         data: {
           'text/plain': `'${expression}' not found. Did you mean: ${suggestions.join(', ')}?`,
@@ -988,6 +989,7 @@ export class JavaScriptExecutor {
     }
 
     return {
+      status: 'ok',
       found: false,
       data: {},
       metadata: {}
@@ -1870,14 +1872,14 @@ export class JavaScriptExecutor {
 
       for (const part of parts) {
         if (value === null || value === undefined) {
-          return { found: false, data: {}, metadata: {} };
+          return { status: 'ok', found: false, data: {}, metadata: {} };
         }
         const hasProp =
           part in value || Object.prototype.hasOwnProperty.call(value, part);
         if (hasProp) {
           value = value[part];
         } else {
-          return { found: false, data: {}, metadata: {} };
+          return { status: 'ok', found: false, data: {}, metadata: {} };
         }
       }
 
@@ -1898,12 +1900,13 @@ export class JavaScriptExecutor {
       }
 
       return {
+        status: 'ok',
         found: true,
         data: inspectionData,
         metadata: {}
       };
     } catch {
-      return { found: false, data: {}, metadata: {} };
+      return { status: 'ok', found: false, data: {}, metadata: {} };
     }
   }
 

@@ -131,26 +131,14 @@ export class JavaScriptRuntimeEvaluator {
     cursorPos: number,
     detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
   ): KernelMessage.IInspectReplyMsg['content'] {
-    const result = this._executor.inspect(code, cursorPos, detailLevel);
-
-    return {
-      status: 'ok',
-      found: result.found,
-      data: result.data,
-      metadata: result.metadata
-    };
+    return this._executor.inspect(code, cursorPos, detailLevel);
   }
 
   /**
    * Check whether the provided code is complete.
    */
   isComplete(code: string): KernelMessage.IIsCompleteReplyMsg['content'] {
-    const result = this._executor.isComplete(code);
-
-    return {
-      status: result.status,
-      indent: result.indent || ''
-    };
+    return this._executor.isComplete(code);
   }
 
   /**
