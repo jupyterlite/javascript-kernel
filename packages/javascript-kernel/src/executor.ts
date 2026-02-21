@@ -389,17 +389,7 @@ export class JavaScriptExecutor {
             break;
 
           case 'ExpressionStatement':
-            // For expression statements, we need to track them
-            if (
-              node.expression.type === 'AssignmentExpression' &&
-              node.expression.left.type === 'Identifier'
-            ) {
-              // Named assignment like `x = 5;`
-              registry.statements.push(node);
-            } else {
-              // Other expressions (function calls, etc.) - keep in order
-              registry.statements.push(node);
-            }
+            registry.statements.push(node);
             break;
 
           default:
@@ -545,13 +535,7 @@ export class JavaScriptExecutor {
     }
 
     // Handle Error objects
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'Error',
-        typeof Error === 'undefined' ? undefined : Error
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'Error')) {
       const errorValue = value as Error;
       return {
         'text/plain': errorValue.stack || errorValue.toString(),
@@ -564,13 +548,7 @@ export class JavaScriptExecutor {
     }
 
     // Handle Date objects
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'Date',
-        typeof Date === 'undefined' ? undefined : Date
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'Date')) {
       const dateValue = value as Date;
       return {
         'text/plain': dateValue.toISOString(),
@@ -579,24 +557,12 @@ export class JavaScriptExecutor {
     }
 
     // Handle RegExp objects
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'RegExp',
-        typeof RegExp === 'undefined' ? undefined : RegExp
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'RegExp')) {
       return { 'text/plain': (value as RegExp).toString() };
     }
 
     // Handle Map
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'Map',
-        typeof Map === 'undefined' ? undefined : Map
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'Map')) {
       const mapValue = value as Map<any, any>;
       const entries = Array.from(mapValue.entries());
       try {
@@ -610,13 +576,7 @@ export class JavaScriptExecutor {
     }
 
     // Handle Set
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'Set',
-        typeof Set === 'undefined' ? undefined : Set
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'Set')) {
       const setValue = value as Set<any>;
       const items = Array.from(setValue);
       try {
@@ -656,13 +616,7 @@ export class JavaScriptExecutor {
     }
 
     // Handle Promise (show as pending)
-    if (
-      this._isInstanceOfRealm(
-        value,
-        'Promise',
-        typeof Promise === 'undefined' ? undefined : Promise
-      )
-    ) {
+    if (this._isInstanceOfRealm(value, 'Promise')) {
       return { 'text/plain': 'Promise { <pending> }' };
     }
 
@@ -1354,10 +1308,7 @@ export class JavaScriptExecutor {
    * Checks for _toHtml, _toSvg, _toPng, _toJpeg, _toMime, inspect.
    */
   private _getCustomMimeBundle(value: any): IMimeBundle | null {
-    const bundle: IMimeBundle = {};
-    let hasCustomOutput = false;
-
-    // Check for _toMime() - returns full MIME bundle
+    // Check for _toMime() first - returns a full MIME bundle directly.
     if (typeof value._toMime === 'function') {
       try {
         const mimeResult = value._toMime();
@@ -1369,96 +1320,49 @@ export class JavaScriptExecutor {
       }
     }
 
-    if (typeof value._toHtml === 'function') {
-      try {
-        const html = value._toHtml();
-        if (typeof html === 'string') {
-          bundle['text/html'] = html;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
+    // Try each custom output method. Each returns a string for its MIME type.
+    const customMimeMethods: [string, string][] = [
+      ['_toHtml', 'text/html'],
+      ['_toSvg', 'image/svg+xml'],
+      ['_toPng', 'image/png'],
+      ['_toJpeg', 'image/jpeg'],
+      ['_toMarkdown', 'text/markdown'],
+      ['_toLatex', 'text/latex']
+    ];
 
-    if (typeof value._toSvg === 'function') {
-      try {
-        const svg = value._toSvg();
-        if (typeof svg === 'string') {
-          bundle['image/svg+xml'] = svg;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
+    const bundle: IMimeBundle = {};
+    let hasCustomOutput = false;
 
-    // Check for _toPng() - should return base64 string
-    if (typeof value._toPng === 'function') {
-      try {
-        const png = value._toPng();
-        if (typeof png === 'string') {
-          bundle['image/png'] = png;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
-
-    // Check for _toJpeg() - should return base64 string
-    if (typeof value._toJpeg === 'function') {
-      try {
-        const jpeg = value._toJpeg();
-        if (typeof jpeg === 'string') {
-          bundle['image/jpeg'] = jpeg;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
-
-    if (typeof value._toMarkdown === 'function') {
-      try {
-        const md = value._toMarkdown();
-        if (typeof md === 'string') {
-          bundle['text/markdown'] = md;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
-
-    if (typeof value._toLatex === 'function') {
-      try {
-        const latex = value._toLatex();
-        if (typeof latex === 'string') {
-          bundle['text/latex'] = latex;
-          hasCustomOutput = true;
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
-
-    // Add text/plain representation
-    if (hasCustomOutput) {
-      // Use custom inspect() if available, otherwise use toString()
-      if (typeof value.inspect === 'function') {
+    for (const [method, mimeType] of customMimeMethods) {
+      if (typeof value[method] === 'function') {
         try {
-          bundle['text/plain'] = value.inspect();
+          const result = value[method]();
+          if (typeof result === 'string') {
+            bundle[mimeType] = result;
+            hasCustomOutput = true;
+          }
         } catch {
-          bundle['text/plain'] = String(value);
+          // Ignore errors in custom methods
         }
-      } else {
+      }
+    }
+
+    if (!hasCustomOutput) {
+      return null;
+    }
+
+    // Add text/plain representation using inspect() if available.
+    if (typeof value.inspect === 'function') {
+      try {
+        bundle['text/plain'] = value.inspect();
+      } catch {
         bundle['text/plain'] = String(value);
       }
-      return bundle;
+    } else {
+      bundle['text/plain'] = String(value);
     }
 
-    return null;
+    return bundle;
   }
 
   /**
@@ -1466,16 +1370,8 @@ export class JavaScriptExecutor {
    */
   private _isDOMElement(value: any): boolean {
     return (
-      this._isInstanceOfRealm(
-        value,
-        'HTMLElement',
-        typeof HTMLElement === 'undefined' ? undefined : HTMLElement
-      ) ||
-      this._isInstanceOfRealm(
-        value,
-        'SVGElement',
-        typeof SVGElement === 'undefined' ? undefined : SVGElement
-      )
+      this._isInstanceOfRealm(value, 'HTMLElement') ||
+      this._isInstanceOfRealm(value, 'SVGElement')
     );
   }
 
@@ -1484,11 +1380,7 @@ export class JavaScriptExecutor {
    */
   private _getDOMElementMimeBundle(element: any): IMimeBundle {
     const isCanvasElement =
-      this._isInstanceOfRealm(
-        element,
-        'HTMLCanvasElement',
-        typeof HTMLCanvasElement === 'undefined' ? undefined : HTMLCanvasElement
-      ) ||
+      this._isInstanceOfRealm(element, 'HTMLCanvasElement') ||
       (typeof element?.toDataURL === 'function' &&
         typeof element?.getContext === 'function');
 
@@ -1524,16 +1416,16 @@ export class JavaScriptExecutor {
 
   /**
    * Check `instanceof` against runtime-realm constructors when available.
+   *
+   * Looks up the constructor by name in both the runtime scope and
+   * `globalThis`, so callers don't need to pass a fallback constructor.
    */
-  private _isInstanceOfRealm(
-    value: any,
-    ctorName: string,
-    fallbackCtor?: any
-  ): boolean {
+  private _isInstanceOfRealm(value: any, ctorName: string): boolean {
     if (value === null || value === undefined) {
       return false;
     }
 
+    // Check against the runtime scope constructor (e.g. iframe window).
     const scopeCtor = this._globalScope?.[ctorName];
     if (typeof scopeCtor === 'function') {
       try {
@@ -1545,9 +1437,11 @@ export class JavaScriptExecutor {
       }
     }
 
-    if (typeof fallbackCtor === 'function') {
+    // Fall back to the current realm's globalThis constructor.
+    const globalCtor = (globalThis as Record<string, any>)[ctorName];
+    if (typeof globalCtor === 'function') {
       try {
-        return value instanceof fallbackCtor;
+        return value instanceof globalCtor;
       } catch {
         return false;
       }

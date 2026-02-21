@@ -49,22 +49,92 @@ export interface IRuntimeBackend {
 }
 
 /**
- * Runtime backend that executes code in a hidden iframe through Comlink.
+ * Base class providing shared Comlink proxy logic for runtime backends.
+ *
+ * Subclasses must set `_remote` during initialization and call
+ * `_ready.resolve()` / `_ready.reject()` to signal readiness.
  */
-export class IFrameRuntimeBackend implements IRuntimeBackend {
-  /**
-   * Instantiate a new iframe runtime backend.
-   */
-  constructor(options: IFrameRuntimeBackend.IOptions) {
-    this._options = options;
-    void this._init();
-  }
-
+abstract class AbstractRuntimeBackend implements IRuntimeBackend {
   /**
    * A promise that resolves when the runtime is initialized.
    */
   get ready(): Promise<void> {
     return this._ready.promise;
+  }
+
+  abstract dispose(): void;
+
+  /**
+   * Execute code via the remote runtime API.
+   */
+  async execute(
+    code: string,
+    executionCount: number
+  ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
+    await this.ready;
+    return this._getRemote().execute(code, executionCount);
+  }
+
+  /**
+   * Complete code via the remote runtime API.
+   */
+  async complete(
+    code: string,
+    cursorPos: number
+  ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
+    await this.ready;
+    return this._getRemote().complete(code, cursorPos);
+  }
+
+  /**
+   * Inspect code via the remote runtime API.
+   */
+  async inspect(
+    code: string,
+    cursorPos: number,
+    detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
+  ): Promise<KernelMessage.IInspectReplyMsg['content']> {
+    await this.ready;
+    return this._getRemote().inspect(code, cursorPos, detailLevel);
+  }
+
+  /**
+   * Check code completeness via the remote runtime API.
+   */
+  async isComplete(
+    code: string
+  ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
+    await this.ready;
+    return this._getRemote().isComplete(code);
+  }
+
+  /**
+   * Return remote runtime API or throw when not initialized.
+   */
+  private _getRemote(): Comlink.Remote<IRemoteRuntimeApi> {
+    if (!this._remote) {
+      throw new Error(`${this._runtimeLabel} runtime is not initialized`);
+    }
+    return this._remote;
+  }
+
+  /** Human-readable label used in error messages. */
+  protected abstract readonly _runtimeLabel: string;
+  protected _ready = new PromiseDelegate<void>();
+  protected _remote: Comlink.Remote<IRemoteRuntimeApi> | null = null;
+}
+
+/**
+ * Runtime backend that executes code in a hidden iframe through Comlink.
+ */
+export class IFrameRuntimeBackend extends AbstractRuntimeBackend {
+  /**
+   * Instantiate a new iframe runtime backend.
+   */
+  constructor(options: IFrameRuntimeBackend.IOptions) {
+    super();
+    this._options = options;
+    void this._init();
   }
 
   /**
@@ -97,50 +167,6 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     this._outputProxy = null;
     this._globalScope = null;
     this._executor = null;
-  }
-
-  /**
-   * Execute code inside the iframe runtime.
-   */
-  async execute(
-    code: string,
-    executionCount: number
-  ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().execute(code, executionCount);
-  }
-
-  /**
-   * Complete code inside the iframe runtime.
-   */
-  async complete(
-    code: string,
-    cursorPos: number
-  ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().complete(code, cursorPos);
-  }
-
-  /**
-   * Inspect code inside the iframe runtime.
-   */
-  async inspect(
-    code: string,
-    cursorPos: number,
-    detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
-  ): Promise<KernelMessage.IInspectReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().inspect(code, cursorPos, detailLevel);
-  }
-
-  /**
-   * Check code completeness inside the iframe runtime.
-   */
-  async isComplete(
-    code: string
-  ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().isComplete(code);
   }
 
   /**
@@ -252,19 +278,9 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     }
   }
 
-  /**
-   * Return remote runtime API or throw when not initialized.
-   */
-  private _getRemote(): Comlink.Remote<IRemoteRuntimeApi> {
-    if (!this._remote) {
-      throw new Error('IFrame runtime is not initialized');
-    }
-    return this._remote;
-  }
+  protected readonly _runtimeLabel = 'IFrame';
 
   private _options: IFrameRuntimeBackend.IOptions;
-  private _ready = new PromiseDelegate<void>();
-  private _remote: Comlink.Remote<IRemoteRuntimeApi> | null = null;
   private _iframe: HTMLIFrameElement | null = null;
   private _container: HTMLDivElement | null = null;
   private _outputProxy: RuntimeOutputCallback | null = null;
@@ -304,11 +320,12 @@ export namespace IFrameRuntimeBackend {
 /**
  * Runtime backend that executes code in a dedicated web worker.
  */
-export class WorkerRuntimeBackend implements IRuntimeBackend {
+export class WorkerRuntimeBackend extends AbstractRuntimeBackend {
   /**
    * Instantiate a new worker runtime backend.
    */
   constructor(options: WorkerRuntimeBackend.IOptions) {
+    super();
     this._options = options;
 
     if (typeof Worker === 'undefined') {
@@ -345,13 +362,6 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
   }
 
   /**
-   * A promise that resolves when the runtime is initialized.
-   */
-  get ready(): Promise<void> {
-    return this._ready.promise;
-  }
-
-  /**
    * Dispose worker resources.
    */
   dispose(): void {
@@ -366,50 +376,6 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
     this._worker?.terminate();
     this._worker = null;
     this._outputProxy = null;
-  }
-
-  /**
-   * Execute code inside the worker runtime.
-   */
-  async execute(
-    code: string,
-    executionCount: number
-  ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().execute(code, executionCount);
-  }
-
-  /**
-   * Complete code inside the worker runtime.
-   */
-  async complete(
-    code: string,
-    cursorPos: number
-  ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().complete(code, cursorPos);
-  }
-
-  /**
-   * Inspect code inside the worker runtime.
-   */
-  async inspect(
-    code: string,
-    cursorPos: number,
-    detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
-  ): Promise<KernelMessage.IInspectReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().inspect(code, cursorPos, detailLevel);
-  }
-
-  /**
-   * Check code completeness inside the worker runtime.
-   */
-  async isComplete(
-    code: string
-  ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
-    await this.ready;
-    return this._getRemote().isComplete(code);
   }
 
   /**
@@ -457,21 +423,11 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
     this._ready.reject(error);
   }
 
-  /**
-   * Return remote runtime API or throw when not initialized.
-   */
-  private _getRemote(): Comlink.Remote<IRemoteRuntimeApi> {
-    if (!this._remote) {
-      throw new Error('Worker runtime is not initialized');
-    }
-    return this._remote;
-  }
+  protected readonly _runtimeLabel = 'Worker';
 
   private _options: WorkerRuntimeBackend.IOptions;
   private _worker: Worker | null = null;
-  private _remote: Comlink.Remote<IRemoteRuntimeApi> | null = null;
   private _outputProxy: RuntimeOutputCallback | null = null;
-  private _ready = new PromiseDelegate<void>();
 
   static readonly STARTUP_TIMEOUT_MS = 10000;
 }
