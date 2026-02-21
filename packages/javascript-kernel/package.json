@@ -47,6 +47,7 @@
     "@jupyterlite/services": "^0.7.0",
     "@lumino/coreutils": "^2.0.0",
     "astring": "^1.9.0",
+    "comlink": "^4.3.1",
     "meriyah": "^4.3.9"
   },
   "devDependencies": {

@@ -3391,6 +3391,7 @@ __metadata:
     "@lumino/coreutils": ^2.0.0
     "@types/jest": ^26.0.10
     astring: ^1.9.0
+    comlink: ^4.3.1
     jest: ^26.4.2
     meriyah: ^4.3.9
     rimraf: ~5.0.1

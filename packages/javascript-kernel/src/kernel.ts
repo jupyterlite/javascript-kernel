@@ -265,8 +265,14 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
         await this.onRuntimeReady({
           runtime: 'iframe',
           globalScope: context.globalScope,
-          executor: context.evaluator.executor,
-          execute: async code => Promise.resolve(context.evaluate(code))
+          executor: context.executor,
+          execute: async code => {
+            const reply = await context.execute(code);
+            if (reply.status === 'error') {
+              throw this._createRuntimeInitializationError(reply);
+            }
+            return reply;
+          }
         });
       }
     });
@@ -403,7 +409,7 @@ export namespace JavaScriptKernel {
     | IWorkerRuntimeReadyContext;
 
   /**
-   * Factory used to customize the iframe runtime executor.
+   * Factory used to customize iframe runtime evaluation behavior.
    */
   export type IExecutorFactory = (
     globalScope: Record<string, any>

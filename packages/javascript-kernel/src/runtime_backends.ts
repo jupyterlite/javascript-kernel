@@ -5,15 +5,16 @@ import type { KernelMessage } from '@jupyterlab/services';
 
 import { PromiseDelegate } from '@lumino/coreutils';
 
-import type { JavaScriptExecutor } from './executor';
+import * as Comlink from 'comlink';
+
+import { JavaScriptExecutor } from './executor';
 import { normalizeError } from './errors';
-import { JavaScriptRuntimeEvaluator } from './runtime_evaluator';
+import { createRemoteRuntimeApi } from './runtime_remote';
 import type {
+  IRemoteRuntimeApi,
+  RuntimeOutputCallback,
   RuntimeOutputHandler,
-  RuntimeRequest,
-  RuntimeResponse,
-  WorkerRuntimeInboundMessage,
-  WorkerRuntimeOutboundMessage
+  RuntimeOutputMessage
 } from './runtime_protocol';
 
 /**
@@ -48,7 +49,7 @@ export interface IRuntimeBackend {
 }
 
 /**
- * Runtime backend that executes code in a hidden iframe.
+ * Runtime backend that executes code in a hidden iframe through Comlink.
  */
 export class IFrameRuntimeBackend implements IRuntimeBackend {
   /**
@@ -74,28 +75,16 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
   }
 
   /**
-   * The runtime global scope.
-   */
-  get globalScope(): Record<string, any> | null {
-    return this._iframe?.contentWindow
-      ? (this._iframe.contentWindow as Record<string, any>)
-      : null;
-  }
-
-  /**
-   * The runtime evaluator.
-   */
-  get evaluator(): JavaScriptRuntimeEvaluator | null {
-    return this._evaluator;
-  }
-
-  /**
    * Dispose iframe resources.
    */
   dispose(): void {
     this._ready.reject(new Error('IFrame runtime disposed'));
-    this._evaluator?.dispose();
-    this._evaluator = null;
+
+    if (this._remote) {
+      void this._remote.dispose().catch(() => undefined);
+      this._remote[Comlink.releaseProxy]();
+      this._remote = null;
+    }
 
     this._iframe?.remove();
     this._iframe = null;
@@ -104,6 +93,10 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
       this._container.remove();
       this._container = null;
     }
+
+    this._outputProxy = null;
+    this._globalScope = null;
+    this._executor = null;
   }
 
   /**
@@ -114,7 +107,7 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     executionCount: number
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
     await this.ready;
-    return this._getEvaluator().execute(code, executionCount);
+    return this._getRemote().execute(code, executionCount);
   }
 
   /**
@@ -125,7 +118,7 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     cursorPos: number
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
     await this.ready;
-    return this._getEvaluator().complete(code, cursorPos);
+    return this._getRemote().complete(code, cursorPos);
   }
 
   /**
@@ -137,7 +130,7 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
   ): Promise<KernelMessage.IInspectReplyMsg['content']> {
     await this.ready;
-    return this._getEvaluator().inspect(code, cursorPos, detailLevel);
+    return this._getRemote().inspect(code, cursorPos, detailLevel);
   }
 
   /**
@@ -147,25 +140,11 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
     code: string
   ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
     await this.ready;
-    return this._getEvaluator().isComplete(code);
+    return this._getRemote().isComplete(code);
   }
 
   /**
-   * Evaluate raw code in the iframe global scope.
-   */
-  evaluate(code: string): any {
-    const globalScope = this._getGlobalScope();
-    const scopeFunction = globalScope.Function;
-    const functionConstructor =
-      typeof scopeFunction === 'function'
-        ? (scopeFunction as FunctionConstructor)
-        : Function;
-    const evaluateCode = functionConstructor(code);
-    return evaluateCode.call(globalScope);
-  }
-
-  /**
-   * Initialize iframe and evaluator.
+   * Initialize iframe and remote runtime API.
    */
   private async _init(): Promise<void> {
     try {
@@ -186,73 +165,113 @@ export class IFrameRuntimeBackend implements IRuntimeBackend {
 
       this._container.appendChild(this._iframe);
 
-      await new Promise<void>(resolve => {
+      await new Promise<void>((resolve, reject) => {
         if (!this._iframe) {
-          resolve();
+          reject(new Error('IFrame runtime is not initialized'));
           return;
         }
+
         this._iframe.onload = () => resolve();
+        this._iframe.onerror = () => {
+          reject(new Error('IFrame runtime failed to load'));
+        };
       });
 
       if (!this._iframe?.contentWindow) {
         throw new Error('IFrame window not available');
       }
 
-      const globalScope = this._iframe.contentWindow as Record<string, any>;
-      const executor = this._options.executorFactory?.(globalScope);
-      this._evaluator = new JavaScriptRuntimeEvaluator({
-        globalScope,
-        onOutput: this._options.onOutput,
-        executor
+      this._globalScope = this._iframe.contentWindow as Record<string, any>;
+      this._executor =
+        this._options.executorFactory?.(this._globalScope) ??
+        new JavaScriptExecutor(this._globalScope);
+
+      // Bind expose/listen on the iframe window context so RPC still flows
+      // through postMessage without requiring an inline iframe bootstrap script.
+      const exposedEndpoint = Comlink.windowEndpoint(
+        window,
+        this._iframe.contentWindow,
+        '*'
+      );
+      Comlink.expose(
+        createRemoteRuntimeApi(this._globalScope, this._executor),
+        exposedEndpoint
+      );
+
+      const endpoint = Comlink.windowEndpoint(
+        this._iframe.contentWindow,
+        window,
+        '*'
+      );
+      const remote = Comlink.wrap<IRemoteRuntimeApi>(endpoint);
+      const outputProxy = Comlink.proxy((message: RuntimeOutputMessage) => {
+        this._options.onOutput(message);
       });
+
+      this._remote = remote;
+      this._outputProxy = outputProxy;
+      const activeOutputProxy = this._outputProxy;
+      if (!activeOutputProxy) {
+        throw new Error('IFrame runtime output handler is not initialized');
+      }
+
+      await withTimeout(
+        remote.initialize(activeOutputProxy),
+        IFrameRuntimeBackend.STARTUP_TIMEOUT_MS,
+        'IFrame runtime failed to initialize'
+      );
 
       await this._options.onReady?.({
         iframe: this._iframe,
         container: this._container,
-        globalScope,
-        evaluator: this._evaluator,
-        evaluate: code => this.evaluate(code)
+        globalScope: this._globalScope,
+        executor: this._executor,
+        execute: (code, executionCount = 0) =>
+          remote.execute(code, executionCount)
       });
+
       this._ready.resolve();
     } catch (error) {
-      this._evaluator?.dispose();
-      this._evaluator = null;
+      if (this._remote) {
+        void this._remote.dispose().catch(() => undefined);
+        this._remote[Comlink.releaseProxy]();
+        this._remote = null;
+      }
+
       this._iframe?.remove();
       this._iframe = null;
       if (this._container) {
         this._container.remove();
         this._container = null;
       }
+
+      this._outputProxy = null;
+      this._globalScope = null;
+      this._executor = null;
       this._ready.reject(error);
     }
   }
 
   /**
-   * Return evaluator or throw when not initialized.
+   * Return remote runtime API or throw when not initialized.
    */
-  private _getEvaluator(): JavaScriptRuntimeEvaluator {
-    if (!this._evaluator) {
+  private _getRemote(): Comlink.Remote<IRemoteRuntimeApi> {
+    if (!this._remote) {
       throw new Error('IFrame runtime is not initialized');
     }
-    return this._evaluator;
-  }
-
-  /**
-   * Return global scope or throw when not initialized.
-   */
-  private _getGlobalScope(): Record<string, any> {
-    const globalScope = this.globalScope;
-    if (!globalScope) {
-      throw new Error('IFrame runtime is not initialized');
-    }
-    return globalScope;
+    return this._remote;
   }
 
   private _options: IFrameRuntimeBackend.IOptions;
   private _ready = new PromiseDelegate<void>();
-  private _evaluator: JavaScriptRuntimeEvaluator | null = null;
+  private _remote: Comlink.Remote<IRemoteRuntimeApi> | null = null;
   private _iframe: HTMLIFrameElement | null = null;
   private _container: HTMLDivElement | null = null;
+  private _outputProxy: RuntimeOutputCallback | null = null;
+  private _globalScope: Record<string, any> | null = null;
+  private _executor: JavaScriptExecutor | null = null;
+
+  static readonly STARTUP_TIMEOUT_MS = 10000;
 }
 
 /**
@@ -266,8 +285,11 @@ export namespace IFrameRuntimeBackend {
     iframe: HTMLIFrameElement;
     container: HTMLDivElement;
     globalScope: Record<string, any>;
-    evaluator: JavaScriptRuntimeEvaluator;
-    evaluate: (code: string) => any;
+    executor: JavaScriptExecutor;
+    execute: (
+      code: string,
+      executionCount?: number
+    ) => Promise<KernelMessage.IExecuteReplyMsg['content']>;
   }
 
   /**
@@ -294,26 +316,32 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
       return;
     }
 
-    this._worker = new Worker(new URL('./worker-runtime.js', import.meta.url), {
+    const worker = new Worker(new URL('./worker-runtime.js', import.meta.url), {
       type: 'module'
     });
-    this._worker.onmessage = event => {
-      this._onWorkerMessage(event.data as WorkerRuntimeOutboundMessage);
-    };
-    this._worker.onerror = event => {
+
+    worker.onerror = event => {
       const details = [event.message || 'Worker runtime failed to initialize'];
       if (event.filename) {
         details.push(`at ${event.filename}:${event.lineno}:${event.colno}`);
       }
       this._handleWorkerFatal(new Error(details.join(' ')));
     };
-    this._worker.onmessageerror = () => {
+    worker.onmessageerror = () => {
       this._handleWorkerFatal(
         new Error(
           'Worker runtime sent a message that could not be deserialized'
         )
       );
     };
+
+    this._worker = worker;
+    this._remote = Comlink.wrap<IRemoteRuntimeApi>(worker);
+    this._outputProxy = Comlink.proxy((message: RuntimeOutputMessage) => {
+      this._options.onOutput(message);
+    });
+
+    void this._init();
   }
 
   /**
@@ -328,10 +356,16 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
    */
   dispose(): void {
     this._ready.reject(new Error('Worker runtime disposed'));
+
+    if (this._remote) {
+      void this._remote.dispose().catch(() => undefined);
+      this._remote[Comlink.releaseProxy]();
+      this._remote = null;
+    }
+
     this._worker?.terminate();
     this._worker = null;
-
-    this._rejectPending(new Error('Worker runtime disposed'));
+    this._outputProxy = null;
   }
 
   /**
@@ -341,13 +375,8 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
     code: string,
     executionCount: number
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
-    return this._request<KernelMessage.IExecuteReplyMsg['content']>({
-      type: 'execute_request',
-      content: {
-        code
-      },
-      execution_count: executionCount
-    });
+    await this.ready;
+    return this._getRemote().execute(code, executionCount);
   }
 
   /**
@@ -357,13 +386,8 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
     code: string,
     cursorPos: number
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
-    return this._request<KernelMessage.ICompleteReplyMsg['content']>({
-      type: 'complete_request',
-      content: {
-        code,
-        cursor_pos: cursorPos
-      }
-    });
+    await this.ready;
+    return this._getRemote().complete(code, cursorPos);
   }
 
   /**
@@ -374,14 +398,8 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
     cursorPos: number,
     detailLevel: KernelMessage.IInspectRequestMsg['content']['detail_level']
   ): Promise<KernelMessage.IInspectReplyMsg['content']> {
-    return this._request<KernelMessage.IInspectReplyMsg['content']>({
-      type: 'inspect_request',
-      content: {
-        code,
-        cursor_pos: cursorPos,
-        detail_level: detailLevel
-      }
-    });
+    await this.ready;
+    return this._getRemote().inspect(code, cursorPos, detailLevel);
   }
 
   /**
@@ -390,113 +408,34 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
   async isComplete(
     code: string
   ): Promise<KernelMessage.IIsCompleteReplyMsg['content']> {
-    return this._request<KernelMessage.IIsCompleteReplyMsg['content']>({
-      type: 'is_complete_request',
-      content: {
-        code
-      }
-    });
+    await this.ready;
+    return this._getRemote().isComplete(code);
   }
 
   /**
-   * Send a request to the worker and await response.
+   * Initialize remote worker API and execute optional initialization hook.
    */
-  private async _request<T>(request: RuntimeRequest): Promise<T> {
-    return this._requestWithMode<T>(request, true);
-  }
+  private async _init(): Promise<void> {
+    const remote = this._remote;
+    const outputProxy = this._outputProxy;
 
-  /**
-   * Send a request, optionally waiting for runtime readiness.
-   */
-  private async _requestWithMode<T>(
-    request: RuntimeRequest,
-    waitForReady: boolean
-  ): Promise<T> {
-    if (waitForReady) {
-      await this.ready;
-    }
-
-    if (!this._worker) {
-      throw new Error('Worker runtime is not initialized');
-    }
-
-    const id = this._nextRequestId++;
-    const envelope: WorkerRuntimeInboundMessage = {
-      kind: 'request',
-      id,
-      request
-    };
-
-    return new Promise<T>((resolve, reject) => {
-      this._pending.set(id, {
-        resolve: value => resolve(value as T),
-        reject
-      });
-
-      try {
-        this._worker?.postMessage(envelope);
-      } catch (error) {
-        this._pending.delete(id);
-        reject(error as Error);
-      }
-    });
-  }
-
-  /**
-   * Handle worker output and request responses.
-   */
-  private _onWorkerMessage(message: WorkerRuntimeOutboundMessage): void {
-    switch (message.kind) {
-      case 'ready':
-        void this._handleWorkerReady();
-        break;
-      case 'output':
-        this._options.onOutput(message.message);
-        break;
-      case 'response': {
-        const pending = this._pending.get(message.id);
-        if (!pending) {
-          return;
-        }
-        this._pending.delete(message.id);
-        if (message.ok) {
-          pending.resolve(message.payload as RuntimeResponse);
-        } else {
-          const error = new Error(message.error.message);
-          error.name = message.error.name;
-          error.stack = message.error.stack;
-          pending.reject(error);
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  /**
-   * Resolve readiness after optional initialization hook.
-   */
-  private async _handleWorkerReady(): Promise<void> {
-    if (this._readyHandled) {
+    if (!remote || !outputProxy) {
+      this._ready.reject(new Error('Worker runtime is not initialized'));
       return;
     }
-    this._readyHandled = true;
 
     try {
+      await withTimeout(
+        remote.initialize(outputProxy),
+        WorkerRuntimeBackend.STARTUP_TIMEOUT_MS,
+        'Worker runtime failed to initialize'
+      );
+
       await this._options.onReady?.({
         execute: (code, executionCount = 0) =>
-          this._requestWithMode<KernelMessage.IExecuteReplyMsg['content']>(
-            {
-              type: 'execute_request',
-              content: {
-                code
-              },
-              execution_count: executionCount
-            },
-            false
-          )
+          remote.execute(code, executionCount)
       });
+
       this._ready.resolve();
     } catch (error) {
       this._handleWorkerFatal(normalizeError(error));
@@ -504,37 +443,37 @@ export class WorkerRuntimeBackend implements IRuntimeBackend {
   }
 
   /**
-   * Reject all pending requests and initialization with a fatal worker error.
+   * Reject initialization with a fatal worker error.
    */
   private _handleWorkerFatal(error: Error): void {
+    if (this._remote) {
+      this._remote[Comlink.releaseProxy]();
+      this._remote = null;
+    }
+
     this._worker?.terminate();
     this._worker = null;
+    this._outputProxy = null;
     this._ready.reject(error);
-    this._rejectPending(error);
   }
 
   /**
-   * Reject pending in-flight worker requests.
+   * Return remote runtime API or throw when not initialized.
    */
-  private _rejectPending(error: Error): void {
-    for (const pending of this._pending.values()) {
-      pending.reject(error);
+  private _getRemote(): Comlink.Remote<IRemoteRuntimeApi> {
+    if (!this._remote) {
+      throw new Error('Worker runtime is not initialized');
     }
-    this._pending.clear();
+    return this._remote;
   }
 
   private _options: WorkerRuntimeBackend.IOptions;
   private _worker: Worker | null = null;
-  private _readyHandled = false;
-  private _nextRequestId = 1;
+  private _remote: Comlink.Remote<IRemoteRuntimeApi> | null = null;
+  private _outputProxy: RuntimeOutputCallback | null = null;
   private _ready = new PromiseDelegate<void>();
-  private _pending = new Map<
-    number,
-    {
-      resolve: (value: RuntimeResponse) => void;
-      reject: (reason: Error) => void;
-    }
-  >();
+
+  static readonly STARTUP_TIMEOUT_MS = 10000;
 }
 
 /**
@@ -557,4 +496,30 @@ export namespace WorkerRuntimeBackend {
   export interface IOptions extends IRuntimeBackendOptions {
     onReady?: (context: IReadyContext) => void | Promise<void>;
   }
+}
+
+/**
+ * Add a timeout to runtime startup operations.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+
+    void promise.then(
+      value => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timeout);
+        reject(error as Error);
+      }
+    );
+  });
 }
