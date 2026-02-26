@@ -499,7 +499,10 @@ export class JavaScriptExecutor {
       // Check if it looks like HTML (must start with a valid tag: <div>, <p class="...">,
       // <!DOCTYPE>, <!-- -->, <br/>, etc.). Rejects non-HTML like "<a, b>".
       const trimmed = value.trim();
-      if (/^<(?:[a-zA-Z][a-zA-Z0-9-]*[\s\/>]|!(?:DOCTYPE|--))/.test(trimmed) && trimmed.endsWith('>')) {
+      if (
+        /^<(?:[a-zA-Z][a-zA-Z0-9-]*[\s\/>]|!(?:DOCTYPE|--))/.test(trimmed) &&
+        trimmed.endsWith('>')
+      ) {
         return {
           'text/html': value,
           'text/plain': value
