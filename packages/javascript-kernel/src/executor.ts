@@ -6,14 +6,9 @@ import type { KernelMessage } from '@jupyterlab/services';
 import { parseScript } from 'meriyah';
 import { generate } from 'astring';
 
-import { IMimeBundle } from './display';
+import type { IMimeBundle } from '@jupyterlab/nbformat';
 
-export {
-  IMimeBundle,
-  IDisplayData,
-  IDisplayCallbacks,
-  DisplayHelper
-} from './display';
+export { IDisplayData, IDisplayCallbacks, DisplayHelper } from './display';
 
 /**
  * Configuration for magic imports.
@@ -501,8 +496,10 @@ export class JavaScriptExecutor {
 
     // Handle primitives
     if (typeof value === 'string') {
-      // Check if it looks like HTML
-      if (value.trim().startsWith('<') && value.trim().endsWith('>')) {
+      // Check if it looks like HTML (must start with a valid tag: <div>, <p class="...">,
+      // <!DOCTYPE>, <!-- -->, <br/>, etc.). Rejects non-HTML like "<a, b>".
+      const trimmed = value.trim();
+      if (/^<(?:[a-zA-Z][a-zA-Z0-9-]*[\s\/>]|!(?:DOCTYPE|--))/.test(trimmed) && trimmed.endsWith('>')) {
         return {
           'text/html': value,
           'text/plain': value
@@ -746,23 +743,17 @@ export class JavaScriptExecutor {
 
     const codeLine = lines[lineIndex];
 
-    // Only match if cursor is at the end of the line
-    if (cursorPosInLine !== codeLine.length) {
-      return {
-        matches: [],
-        cursorStart: cursorPos,
-        cursorEnd: cursorPos
-      };
-    }
-
-    const lineRes = this.completeLine(codeLine);
+    const codePrefix = codeLine.slice(0, cursorPosInLine);
+    const lineRes = this.completeLine(codePrefix);
     const matches = lineRes.matches;
     const inLineCursorStart = lineRes.cursorStart;
+    const tail = codeLine.slice(cursorPosInLine);
+    const cursorTail = tail.match(/^[\w$]*/)?.[0] ?? '';
 
     return {
       matches,
       cursorStart: lineBegin + inLineCursorStart,
-      cursorEnd: cursorPos,
+      cursorEnd: cursorPos + cursorTail.length,
       status: lineRes.status || 'ok'
     };
   }
@@ -1151,35 +1142,103 @@ export class JavaScriptExecutor {
    * Transform import source with magic imports.
    */
   private _transformImportSource(source: string): string {
-    const noMagicStarts = ['http://', 'https://', 'data:', 'file://', 'blob:'];
-    const noEmsEnds = ['.js', '.mjs', '.cjs', '.wasm', '+esm'];
-
     if (!this._config.magicImports.enabled) {
       return source;
     }
 
-    const baseUrl = this._config.magicImports.baseUrl.endsWith('/')
-      ? this._config.magicImports.baseUrl
-      : this._config.magicImports.baseUrl + '/';
-
-    const addEms = !noEmsEnds.some(end => source.endsWith(end));
-    const emsExtraEnd = addEms ? (source.endsWith('/') ? '+esm' : '/+esm') : '';
-
-    // If the source starts with http/https, don't transform
-    if (noMagicStarts.some(start => source.startsWith(start))) {
+    // Keep absolute, relative and import-map style specifiers unchanged.
+    if (this._isDirectImportSource(source)) {
       return source;
     }
 
-    // If it starts with npm/ or gh/, or auto npm is disabled
-    if (
-      ['npm/', 'gh/'].some(start => source.startsWith(start)) ||
+    const { path: sourcePath, suffix } = this._splitImportSourceSuffix(source);
+
+    const transformedPath =
+      ['npm/', 'gh/'].some(start => sourcePath.startsWith(start)) ||
       !this._config.magicImports.enableAutoNpm
-    ) {
-      return `${baseUrl}${source}${emsExtraEnd}`;
+        ? sourcePath
+        : `npm/${sourcePath}`;
+
+    let transformedSource = `${this._joinBaseAndPath(
+      this._config.magicImports.baseUrl,
+      transformedPath
+    )}${suffix}`;
+
+    if (this._shouldAppendEsmSuffix(sourcePath)) {
+      transformedSource = this._appendEsmSuffix(transformedSource);
     }
 
-    // Auto-prefix with npm/
-    return `${baseUrl}npm/${source}${emsExtraEnd}`;
+    return transformedSource;
+  }
+
+  /**
+   * Whether an import source should bypass magic import transformation.
+   */
+  private _isDirectImportSource(source: string): boolean {
+    return (
+      /^(?:[a-zA-Z][a-zA-Z\d+.-]*:|\/\/)/.test(source) ||
+      source.startsWith('./') ||
+      source.startsWith('../') ||
+      source.startsWith('/') ||
+      source.startsWith('#')
+    );
+  }
+
+  /**
+   * Whether a transformed import should include the jsDelivr `+esm` suffix.
+   */
+  private _shouldAppendEsmSuffix(sourcePath: string): boolean {
+    const noEsmEnds = ['.js', '.mjs', '.cjs', '.wasm', '+esm'];
+    return !noEsmEnds.some(end => sourcePath.endsWith(end));
+  }
+
+  /**
+   * Append `+esm` before query/hash suffixes.
+   */
+  private _appendEsmSuffix(source: string): string {
+    const { path, suffix } = this._splitImportSourceSuffix(source);
+    const esmSuffix = path.endsWith('/') ? '+esm' : '/+esm';
+    return `${path}${esmSuffix}${suffix}`;
+  }
+
+  /**
+   * Split an import source into path and query/hash suffix.
+   */
+  private _splitImportSourceSuffix(source: string): {
+    path: string;
+    suffix: string;
+  } {
+    const queryIndex = source.indexOf('?');
+    const hashIndex = source.indexOf('#');
+    const splitIndex =
+      queryIndex === -1
+        ? hashIndex
+        : hashIndex === -1
+          ? queryIndex
+          : Math.min(queryIndex, hashIndex);
+
+    if (splitIndex === -1) {
+      return { path: source, suffix: '' };
+    }
+
+    return {
+      path: source.slice(0, splitIndex),
+      suffix: source.slice(splitIndex)
+    };
+  }
+
+  /**
+   * Join a base URL and import path while preserving origin semantics.
+   */
+  private _joinBaseAndPath(baseUrl: string, path: string): string {
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    const normalizedPath = path.replace(/^\/+/, '');
+
+    try {
+      return new URL(normalizedPath, normalizedBase).toString();
+    } catch {
+      return `${normalizedBase}${normalizedPath}`;
+    }
   }
 
   /**
@@ -1659,7 +1718,7 @@ export class JavaScriptExecutor {
     expression: string,
     value: any,
     detailLevel: number
-  ): IMimeBundle {
+  ): IInspectResult['data'] {
     const lines: string[] = [];
 
     // Type information

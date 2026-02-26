@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import type { KernelMessage } from '@jupyterlab/services';
+import type { IWorkerKernel } from '@jupyterlite/services';
 
 /**
  * Supported runtime backends for the JavaScript kernel.
@@ -57,7 +58,10 @@ export type RuntimeOutputCallback = (
  * Runtime API exposed from iframe and worker contexts over Comlink.
  */
 export interface IRemoteRuntimeApi {
-  initialize(onOutput: RuntimeOutputCallback): Promise<void>;
+  initialize(
+    options: IWorkerKernel.IOptions,
+    onOutput: RuntimeOutputCallback
+  ): Promise<void>;
   execute(
     code: string,
     executionCount: number

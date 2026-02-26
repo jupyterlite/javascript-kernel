@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import type { KernelMessage } from '@jupyterlab/services';
+import { PageConfig } from '@jupyterlab/coreutils';
 
 import { PromiseDelegate } from '@lumino/coreutils';
 
@@ -22,6 +23,7 @@ import type {
  */
 export interface IRuntimeBackendOptions {
   onOutput: RuntimeOutputHandler;
+  baseUrl?: string;
 }
 
 /**
@@ -189,19 +191,40 @@ export class IFrameRuntimeBackend extends AbstractRuntimeBackend {
 <body></body>
 </html>`;
 
-      this._container.appendChild(this._iframe);
+      const iframe = this._iframe;
+      const iframeLoad = new Promise<void>((resolve, reject) => {
+        let settled = false;
 
-      await new Promise<void>((resolve, reject) => {
-        if (!this._iframe) {
-          reject(new Error('IFrame runtime is not initialized'));
-          return;
-        }
+        const cleanup = (): void => {
+          iframe.onload = null;
+          iframe.onerror = null;
+        };
 
-        this._iframe.onload = () => resolve();
-        this._iframe.onerror = () => {
+        iframe.onload = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve();
+        };
+        iframe.onerror = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
           reject(new Error('IFrame runtime failed to load'));
         };
       });
+
+      this._container.appendChild(iframe);
+
+      await withTimeout(
+        iframeLoad,
+        IFrameRuntimeBackend.STARTUP_TIMEOUT_MS,
+        'IFrame runtime failed to load'
+      );
 
       if (!this._iframe?.contentWindow) {
         throw new Error('IFrame window not available');
@@ -242,7 +265,12 @@ export class IFrameRuntimeBackend extends AbstractRuntimeBackend {
       }
 
       await withTimeout(
-        remote.initialize(activeOutputProxy),
+        remote.initialize(
+          {
+            baseUrl: resolveBaseUrl(this._options.baseUrl)
+          },
+          activeOutputProxy
+        ),
         IFrameRuntimeBackend.STARTUP_TIMEOUT_MS,
         'IFrame runtime failed to initialize'
       );
@@ -392,7 +420,12 @@ export class WorkerRuntimeBackend extends AbstractRuntimeBackend {
 
     try {
       await withTimeout(
-        remote.initialize(outputProxy),
+        remote.initialize(
+          {
+            baseUrl: resolveBaseUrl(this._options.baseUrl)
+          },
+          outputProxy
+        ),
         WorkerRuntimeBackend.STARTUP_TIMEOUT_MS,
         'Worker runtime failed to initialize'
       );
@@ -478,4 +511,19 @@ async function withTimeout<T>(
       }
     );
   });
+}
+
+/**
+ * Resolve the runtime base URL with JupyterLab PageConfig fallback.
+ */
+function resolveBaseUrl(baseUrl?: string): string {
+  if (typeof baseUrl === 'string' && baseUrl.length > 0) {
+    return baseUrl;
+  }
+
+  try {
+    return PageConfig.getBaseUrl();
+  } catch {
+    return '/';
+  }
 }

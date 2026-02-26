@@ -5,7 +5,6 @@ import { JavaScriptRuntimeEvaluator } from './runtime_evaluator';
 import type { JavaScriptExecutor } from './executor';
 import type {
   IRemoteRuntimeApi,
-  RuntimeOutputCallback,
   RuntimeOutputMessage
 } from './runtime_protocol';
 
@@ -26,7 +25,7 @@ export function createRemoteRuntimeApi(
   };
 
   const emitOutput = (
-    callback: RuntimeOutputCallback,
+    callback: Parameters<IRemoteRuntimeApi['initialize']>[1],
     message: RuntimeOutputMessage
   ): void => {
     void Promise.resolve(callback(makeCloneSafe(message))).catch(() => {
@@ -35,7 +34,13 @@ export function createRemoteRuntimeApi(
   };
 
   return {
-    async initialize(onOutput: RuntimeOutputCallback): Promise<void> {
+    async initialize(
+      options: Parameters<IRemoteRuntimeApi['initialize']>[0],
+      onOutput: Parameters<IRemoteRuntimeApi['initialize']>[1]
+    ): Promise<void> {
+      if (typeof options.baseUrl !== 'string') {
+        throw new Error('Runtime baseUrl is required');
+      }
       evaluator?.dispose();
       evaluator = new JavaScriptRuntimeEvaluator({
         globalScope,
@@ -79,8 +84,7 @@ export function createRemoteRuntimeApi(
 function makeCloneSafe<T>(value: T): T {
   if (typeof structuredClone === 'function') {
     try {
-      structuredClone(value);
-      return value;
+      return structuredClone(value);
     } catch {
       // fall through to sanitization
     }

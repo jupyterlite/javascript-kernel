@@ -39,12 +39,12 @@
     "watch:src": "tsc -w"
   },
   "dependencies": {
-    "@jupyterlab/application": "^4.5.0",
+    "@jupyterlab/application": "^4.5.5",
     "@jupyterlite/javascript-kernel": "^0.4.0-alpha.0",
     "@jupyterlite/services": "^0.7.0"
   },
   "devDependencies": {
-    "@jupyterlab/builder": "^4.5.0",
+    "@jupyterlab/builder": "^4.5.5",
     "npm-run-all2": "^7.0.1",
     "rimraf": "~5.0.1",
     "typescript": "~5.0.2"

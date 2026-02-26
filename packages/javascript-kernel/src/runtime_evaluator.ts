@@ -164,7 +164,23 @@ export class JavaScriptRuntimeEvaluator {
       warn: scopeConsole.warn
     };
 
-    const toText = (args: any[]) => args.join(' ') + '\n';
+    const toText = (args: any[]) => {
+      const text = args
+        .map(arg => {
+          if (typeof arg === 'string') {
+            return arg;
+          }
+
+          try {
+            return String(arg);
+          } catch {
+            return '[Unprintable value]';
+          }
+        })
+        .join(' ');
+
+      return `${text}\n`;
+    };
 
     scopeConsole.log = (...args: any[]) => {
       this._onOutput({

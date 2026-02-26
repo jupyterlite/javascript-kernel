@@ -2,13 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import type { KernelMessage } from '@jupyterlab/services';
-
-/**
- * MIME bundle for rich display.
- */
-export interface IMimeBundle {
-  [key: string]: any;
-}
+import type { IMimeBundle } from '@jupyterlab/nbformat';
 
 /**
  * Display request from display().
@@ -78,7 +72,12 @@ export class DisplayHelper {
    * display('my-id').html('<div>...</div>')
    */
   display(id?: string): DisplayHelper {
-    return new DisplayHelper(id);
+    const child = new DisplayHelper(id);
+    child.setCallbacks({
+      onDisplay: this._displayCallback,
+      onClear: this._clearCallback
+    });
+    return child;
   }
 
   /**
