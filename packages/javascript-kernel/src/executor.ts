@@ -500,7 +500,7 @@ export class JavaScriptExecutor {
       // <!DOCTYPE>, <!-- -->, <br/>, etc.). Rejects non-HTML like "<a, b>".
       const trimmed = value.trim();
       if (
-        /^<(?:[a-zA-Z][a-zA-Z0-9-]*[\s\/>]|!(?:DOCTYPE|--))/.test(trimmed) &&
+        /^<(?:[a-zA-Z][a-zA-Z0-9-]*[\s/>]|!(?:DOCTYPE|--))/.test(trimmed) &&
         trimmed.endsWith('>')
       ) {
         return {
