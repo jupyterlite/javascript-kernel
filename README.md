@@ -33,20 +33,20 @@ pip uninstall jupyterlite-javascript-kernel
 
 The extension currently registers two JavaScript kernelspecs:
 
-- `JavaScript`:
+- `JavaScript (IFrame)`:
   Runs code in a hidden runtime `iframe` on the main page thread. Use this when your code needs browser DOM APIs like `document`, `window`, or canvas access through the page context.
-- `JavaScript (Worker)`:
+- `JavaScript (Web Worker)`:
   Runs code in a dedicated Web Worker. Use this for stronger isolation and to avoid blocking the main UI thread.
 
 Pick either kernel from the notebook kernel selector in JupyterLite.
 
 ### Worker mode limitations
 
-Web Workers do not expose DOM APIs. In `JavaScript (Worker)`, APIs such as `document`, direct element access, and other main-thread-only browser APIs are unavailable.
+Web Workers do not expose DOM APIs. In `JavaScript (Web Worker)`, APIs such as `document`, direct element access, and other main-thread-only browser APIs are unavailable.
 
 ### Import side effects in iframe mode
 
-In `JavaScript` (iframe mode), user code and imports execute in the runtime iframe scope.
+In `JavaScript (IFrame)`, user code and imports execute in the runtime iframe scope.
 
 By default, module-level side effects stay in the runtime iframe. To intentionally affect the main page (`window.parent`), access it directly.
 
