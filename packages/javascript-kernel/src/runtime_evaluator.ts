@@ -161,7 +161,11 @@ export class JavaScriptRuntimeEvaluator {
       log: scopeConsole.log,
       info: scopeConsole.info,
       error: scopeConsole.error,
-      warn: scopeConsole.warn
+      warn: scopeConsole.warn,
+      debug: scopeConsole.debug,
+      dir: scopeConsole.dir,
+      trace: scopeConsole.trace,
+      table: scopeConsole.table
     };
 
     const toText = (args: any[]) => {
@@ -172,6 +176,13 @@ export class JavaScriptRuntimeEvaluator {
           }
 
           try {
+            if (typeof arg === 'object' && arg !== null) {
+              const bundle = this._executor.getMimeBundle(arg);
+              const plain = bundle['text/plain'];
+              if (typeof plain === 'string') {
+                return plain;
+              }
+            }
             return String(arg);
           } catch {
             return '[Unprintable value]';
@@ -200,6 +211,11 @@ export class JavaScriptRuntimeEvaluator {
 
     scopeConsole.warn = scopeConsole.error;
 
+    scopeConsole.debug = scopeConsole.log;
+    scopeConsole.dir = scopeConsole.log;
+    scopeConsole.trace = scopeConsole.log;
+    scopeConsole.table = scopeConsole.log;
+
     if ('onerror' in this._globalScope) {
       this._originalOnError = this._globalScope.onerror;
       this._globalScope.onerror = (message: any) => {
@@ -223,6 +239,10 @@ export class JavaScriptRuntimeEvaluator {
       scopeConsole.info = this._originalConsole.info;
       scopeConsole.error = this._originalConsole.error;
       scopeConsole.warn = this._originalConsole.warn;
+      scopeConsole.debug = this._originalConsole.debug;
+      scopeConsole.dir = this._originalConsole.dir;
+      scopeConsole.trace = this._originalConsole.trace;
+      scopeConsole.table = this._originalConsole.table;
     }
 
     if ('onerror' in this._globalScope) {
@@ -275,6 +295,10 @@ export class JavaScriptRuntimeEvaluator {
     info: Console['info'];
     error: Console['error'];
     warn: Console['warn'];
+    debug: Console['debug'];
+    dir: Console['dir'];
+    trace: Console['trace'];
+    table: Console['table'];
   } | null = null;
 }
 
