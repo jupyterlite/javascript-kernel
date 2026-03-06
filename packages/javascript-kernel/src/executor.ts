@@ -878,6 +878,15 @@ export class JavaScriptExecutor {
         detailLevel
       );
 
+      // Add predefined documentation if available
+      const doc = this.getBuiltinDocumentation(expression);
+      if (doc) {
+        const mdContent = inspectionData['text/markdown'] || '';
+        inspectionData['text/markdown'] = mdContent + `\n\n---\n\n${doc}`;
+        const plainContent = inspectionData['text/plain'] || '';
+        inspectionData['text/plain'] = plainContent + `\n\nDoc: ${doc}`;
+      }
+
       return {
         status: 'ok',
         found: true,
