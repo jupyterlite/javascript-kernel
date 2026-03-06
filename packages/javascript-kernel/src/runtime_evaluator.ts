@@ -53,10 +53,20 @@ export class JavaScriptRuntimeEvaluator {
     code: string,
     executionCount: number
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
+    // Parse-time errors are syntax errors, so show only `Name: message`.
+    let asyncFunction: () => Promise<any>;
+    let withReturn: boolean;
     try {
-      const { asyncFunction, withReturn } =
-        this._executor.makeAsyncFromCode(code);
+      const parsed = this._executor.makeAsyncFromCode(code);
+      asyncFunction = parsed.asyncFunction;
+      withReturn = parsed.withReturn;
+    } catch (error) {
+      const normalized = normalizeError(error);
+      return this._emitError(executionCount, normalized, false);
+    }
 
+    // Runtime errors may include useful eval frames from user code.
+    try {
       const resultPromise = this._evalFunc(asyncFunction);
 
       if (withReturn) {
@@ -84,24 +94,7 @@ export class JavaScriptRuntimeEvaluator {
       };
     } catch (error) {
       const normalized = normalizeError(error);
-      const cleanedStack = this._executor.cleanStackTrace(normalized);
-
-      const content: KernelMessage.IReplyErrorContent = {
-        status: 'error',
-        ename: normalized.name || 'Error',
-        evalue: normalized.message || '',
-        traceback: [cleanedStack]
-      };
-
-      this._onOutput({
-        type: 'execute_error',
-        bundle: content
-      });
-
-      return {
-        ...content,
-        execution_count: executionCount
-      };
+      return this._emitError(executionCount, normalized, true);
     }
   }
 
@@ -146,6 +139,36 @@ export class JavaScriptRuntimeEvaluator {
    */
   private _evalFunc(asyncFunc: () => Promise<any>): Promise<any> {
     return asyncFunc.call(this._globalScope);
+  }
+
+  /**
+   * Build and emit an execute error reply.
+   */
+  private _emitError(
+    executionCount: number,
+    error: Error,
+    includeStack: boolean
+  ): KernelMessage.IExecuteReplyMsg['content'] {
+    const traceback = includeStack
+      ? this._executor.cleanStackTrace(error)
+      : `${error.name}: ${error.message}`;
+
+    const content: KernelMessage.IReplyErrorContent = {
+      status: 'error',
+      ename: error.name || 'Error',
+      evalue: error.message || '',
+      traceback: [traceback]
+    };
+
+    this._onOutput({
+      type: 'execute_error',
+      bundle: content
+    });
+
+    return {
+      ...content,
+      execution_count: executionCount
+    };
   }
 
   /**
