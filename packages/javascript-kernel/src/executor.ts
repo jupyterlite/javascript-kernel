@@ -10,6 +10,9 @@ import type { IMimeBundle } from '@jupyterlab/nbformat';
 
 export { IDisplayData, IDisplayCallbacks, DisplayHelper } from './display';
 
+/** Matches the word "eval" in a stack frame (user eval code). */
+const RE_EVAL = /\beval\b/;
+
 /**
  * Configuration for magic imports.
  */
@@ -793,19 +796,10 @@ export class JavaScriptExecutor {
         break;
       }
 
-      // Keep eval frames from user code.
-      if (/\beval\b/.test(trimmed) || trimmed.includes('<anonymous>')) {
+      // Only keep lines that reference user eval code.
+      if (RE_EVAL.test(trimmed) || trimmed.includes('<anonymous>')) {
         userFrames.push(line);
-        continue;
       }
-
-      // Drop stack frames that point to bundled code.
-      if (/^\s*at\s+/.test(trimmed) || /^[^@]*@\S+:\d+:\d+$/.test(trimmed)) {
-        continue;
-      }
-
-      // Keep any other lines (may be useful context).
-      userFrames.push(line);
     }
 
     if (userFrames.length > 0) {
