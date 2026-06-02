@@ -157,6 +157,42 @@ export class JavaScriptRuntimeEvaluator {
   }
 
   /**
+   * Preload a module in the runtime scope.
+   */
+  async preloadModule(moduleName: string): Promise<void> {
+    await this._executor.importModule(moduleName);
+  }
+
+  /**
+   * Register a comm target handler exported by a runtime module.
+   */
+  async registerCommTarget(
+    targetName: string,
+    moduleName: string,
+    exportName = 'default'
+  ): Promise<void> {
+    if (this._commManager.hasTarget(targetName)) {
+      throw new Error(`Comm target ${targetName} is already registered`);
+    }
+
+    const moduleExports = await this._executor.importModule(moduleName);
+    const handler = moduleExports[exportName];
+    if (typeof handler !== 'function') {
+      throw new TypeError(
+        `Comm target ${targetName} must export a handler function`
+      );
+    }
+    this._commManager.registerTarget(targetName, handler);
+  }
+
+  /**
+   * Remove a comm target handler registration.
+   */
+  unregisterCommTarget(targetName: string): void {
+    this._commManager.unregisterTarget(targetName);
+  }
+
+  /**
    * Handle a comm_open message from the frontend.
    */
   handleCommOpen(

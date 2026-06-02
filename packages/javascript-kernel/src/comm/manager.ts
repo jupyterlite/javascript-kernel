@@ -77,6 +77,20 @@ export class CommManager {
   }
 
   /**
+   * Whether a comm target handler is registered.
+   */
+  hasTarget(targetName: string): boolean {
+    return this._targets.has(targetName);
+  }
+
+  /**
+   * Remove a comm target handler registration.
+   */
+  unregisterTarget(targetName: string): void {
+    this._targets.delete(targetName);
+  }
+
+  /**
    * Register a widget instance by comm ID.
    */
   registerWidget<T>(commId: string, widget: T): void {
