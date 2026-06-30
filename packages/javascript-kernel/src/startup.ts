@@ -14,6 +14,7 @@ export interface IJavaScriptKernelStartup {
   registerStartupExtension(
     extension: JavaScriptKernel.IStartupExtension
   ): IDisposable;
+  trackKernel(kernel: JavaScriptKernel): void;
 }
 
 /**

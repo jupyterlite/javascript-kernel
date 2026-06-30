@@ -65,9 +65,7 @@ const registerKernel = (
         runtime,
         startupExtensions: startup.startupExtensions
       } as JavaScriptKernel.IOptions);
-      if (startup instanceof JavaScriptKernelStartup) {
-        startup.trackKernel(kernel);
-      }
+      startup.trackKernel(kernel);
       return kernel;
     }
   });
