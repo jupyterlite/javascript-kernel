@@ -125,6 +125,16 @@ class JavaScriptKernelStartup implements IJavaScriptKernelStartup {
    */
   trackKernel(kernel: JavaScriptKernel): void {
     this._kernels.add(kernel);
+    void Promise.all(
+      this._startupExtensions.map(extension =>
+        kernel.applyStartupExtension(extension)
+      )
+    ).catch(error => {
+      console.error(
+        '[javascript-kernel] Failed to apply startup extensions.',
+        error
+      );
+    });
     const untrackKernel = (sender: JavaScriptKernel): void => {
       this._kernels.delete(sender);
       sender.disposed.disconnect(untrackKernel);

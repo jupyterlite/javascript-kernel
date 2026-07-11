@@ -533,7 +533,14 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
       this._appliedStartupExtensions.add(extension.id);
     } catch (error) {
       for (const target of registeredTargets.reverse()) {
-        await context.unregisterCommTarget(target.targetName);
+        try {
+          await context.unregisterCommTarget(target.targetName);
+        } catch (rollbackError) {
+          console.warn(
+            `[javascript-kernel] Failed to rollback comm target "${target.targetName}" for startup extension "${extension.id}".`,
+            rollbackError
+          );
+        }
       }
       throw error;
     }
