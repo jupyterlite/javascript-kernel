@@ -27,6 +27,7 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     super(options);
     this._runtimeMode = options.runtime ?? 'iframe';
     this._executorFactory = options.executorFactory;
+    this._startupExtensions = [...(options.startupExtensions ?? [])];
     this._backend = this.createBackend(this._runtimeMode);
   }
 
@@ -40,6 +41,8 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
 
     this._comms.clear();
     this._backend.dispose();
+    this._runtimeReadyContext = null;
+    this._appliedStartupExtensions.clear();
     super.dispose();
   }
 
@@ -260,9 +263,44 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
    * Called once a runtime backend is initialized, before `ready` resolves.
    */
   protected async onRuntimeReady(
-    _context: JavaScriptKernel.IRuntimeReadyContext
+    context: JavaScriptKernel.IRuntimeReadyContext
   ): Promise<void> {
-    return Promise.resolve();
+    this._runtimeReadyContext = context;
+    for (const extension of this._startupExtensions) {
+      await this._applyStartupExtension(extension, context);
+    }
+  }
+
+  /**
+   * Apply a startup extension to an initialized runtime.
+   */
+  async applyStartupExtension(
+    extension: JavaScriptKernel.IStartupExtension
+  ): Promise<void> {
+    await this.ready;
+    const context = this._runtimeReadyContext;
+    if (!context) {
+      throw new Error('JavaScript runtime is not initialized');
+    }
+    await this._applyStartupExtension(extension, context);
+  }
+
+  /**
+   * Remove runtime registrations made by a startup extension.
+   */
+  async removeStartupExtension(
+    extension: JavaScriptKernel.IStartupExtension
+  ): Promise<void> {
+    await this.ready;
+    const context = this._runtimeReadyContext;
+    if (!context || !this._appliedStartupExtensions.has(extension.id)) {
+      return;
+    }
+    try {
+      await extension.deactivate?.(context);
+    } finally {
+      this._appliedStartupExtensions.delete(extension.id);
+    }
   }
 
   /**
@@ -287,7 +325,16 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
                 throw this._createRuntimeInitializationError(reply);
               }
               return reply;
-            }
+            },
+            preloadModule: context.preloadModule,
+            registerCommTarget: async target => {
+              await context.registerCommTarget(
+                target.targetName,
+                target.module,
+                target.exportName
+              );
+            },
+            unregisterCommTarget: context.unregisterCommTarget
           });
         }
       });
@@ -307,7 +354,16 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
               throw this._createRuntimeInitializationError(reply);
             }
             return reply;
-          }
+          },
+          preloadModule: context.preloadModule,
+          registerCommTarget: async target => {
+            await context.registerCommTarget(
+              target.targetName,
+              target.module,
+              target.exportName
+            );
+          },
+          unregisterCommTarget: context.unregisterCommTarget
         });
       }
     });
@@ -451,10 +507,28 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     );
   }
 
+  /**
+   * Apply a startup extension once to the given runtime context.
+   */
+  private async _applyStartupExtension(
+    extension: JavaScriptKernel.IStartupExtension,
+    context: JavaScriptKernel.IRuntimeReadyContext
+  ): Promise<void> {
+    if (this._appliedStartupExtensions.has(extension.id)) {
+      return;
+    }
+    await extension.activate(context);
+    this._appliedStartupExtensions.add(extension.id);
+  }
+
   private _unsupportedControlMessages = new Set<'input_reply'>();
   private _comms = new Map<string, { target_name: string }>();
   private _backend: IRuntimeBackend;
   private _executorFactory?: JavaScriptKernel.IExecutorFactory;
+  private _startupExtensions: JavaScriptKernel.IStartupExtension[];
+  private _appliedStartupExtensions = new Set<string>();
+  private _runtimeReadyContext: JavaScriptKernel.IRuntimeReadyContext | null =
+    null;
   private _runtimeMode: RuntimeMode;
 }
 
@@ -468,6 +542,9 @@ export namespace JavaScriptKernel {
   export interface IRuntimeReadyContextBase {
     runtime: RuntimeMode;
     execute: (code: string) => Promise<unknown>;
+    preloadModule: (moduleName: string) => Promise<void>;
+    registerCommTarget: (target: IStartupCommTarget) => Promise<void>;
+    unregisterCommTarget: (targetName: string) => Promise<void>;
   }
 
   /**
@@ -494,6 +571,24 @@ export namespace JavaScriptKernel {
     | IWorkerRuntimeReadyContext;
 
   /**
+   * A comm target handler exported by a startup module.
+   */
+  export interface IStartupCommTarget {
+    targetName: string;
+    module: string;
+    exportName?: string;
+  }
+
+  /**
+   * Startup extension executed before the kernel accepts user code.
+   */
+  export interface IStartupExtension {
+    id: string;
+    activate: (context: IRuntimeReadyContext) => Promise<void> | void;
+    deactivate?: (context: IRuntimeReadyContext) => Promise<void> | void;
+  }
+
+  /**
    * Factory used to customize iframe runtime evaluation behavior.
    */
   export type IExecutorFactory = (
@@ -506,5 +601,6 @@ export namespace JavaScriptKernel {
   export interface IOptions extends IKernel.IOptions {
     runtime?: RuntimeMode;
     executorFactory?: IExecutorFactory;
+    startupExtensions?: readonly IStartupExtension[];
   }
 }

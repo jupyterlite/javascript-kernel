@@ -359,7 +359,12 @@ export class IFrameRuntimeBackend extends AbstractRuntimeBackend {
         globalScope: this._globalScope,
         executor: this._executor,
         execute: (code, executionCount = 0) =>
-          remote.execute(code, executionCount)
+          remote.execute(code, executionCount),
+        preloadModule: moduleName => remote.preloadModule(moduleName),
+        registerCommTarget: (targetName, moduleName, exportName) =>
+          remote.registerCommTarget(targetName, moduleName, exportName),
+        unregisterCommTarget: targetName =>
+          remote.unregisterCommTarget(targetName)
       });
 
       this._ready.resolve();
@@ -412,6 +417,13 @@ export namespace IFrameRuntimeBackend {
       code: string,
       executionCount?: number
     ) => Promise<KernelMessage.IExecuteReplyMsg['content']>;
+    preloadModule: (moduleName: string) => Promise<void>;
+    registerCommTarget: (
+      targetName: string,
+      moduleName: string,
+      exportName?: string
+    ) => Promise<void>;
+    unregisterCommTarget: (targetName: string) => Promise<void>;
   }
 
   /**
@@ -510,7 +522,12 @@ export class WorkerRuntimeBackend extends AbstractRuntimeBackend {
 
       await this._options.onReady?.({
         execute: (code, executionCount = 0) =>
-          remote.execute(code, executionCount)
+          remote.execute(code, executionCount),
+        preloadModule: moduleName => remote.preloadModule(moduleName),
+        registerCommTarget: (targetName, moduleName, exportName) =>
+          remote.registerCommTarget(targetName, moduleName, exportName),
+        unregisterCommTarget: targetName =>
+          remote.unregisterCommTarget(targetName)
       });
 
       this._ready.resolve();
@@ -555,6 +572,13 @@ export namespace WorkerRuntimeBackend {
       code: string,
       executionCount?: number
     ) => Promise<KernelMessage.IExecuteReplyMsg['content']>;
+    preloadModule: (moduleName: string) => Promise<void>;
+    registerCommTarget: (
+      targetName: string,
+      moduleName: string,
+      exportName?: string
+    ) => Promise<void>;
+    unregisterCommTarget: (targetName: string) => Promise<void>;
   }
 
   /**

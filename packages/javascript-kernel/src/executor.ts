@@ -293,6 +293,18 @@ export class JavaScriptExecutor {
   }
 
   /**
+   * Import a module using the executor's import source resolution.
+   */
+  async importModule(source: string): Promise<Record<string, unknown>> {
+    const importSource = this._transformImportSource(source);
+    const importFunction = this._createScopedFunction(
+      'source',
+      'return import(source);'
+    ) as (source: string) => Promise<Record<string, unknown>>;
+    return importFunction.call(this._globalScope, importSource);
+  }
+
+  /**
    * Create a new empty code registry.
    */
   createCodeRegistry(): ICodeRegistry {

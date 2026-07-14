@@ -2994,6 +2994,8 @@ __metadata:
     "@jupyterlab/application": ^4.6.0
     "@jupyterlite/javascript-kernel": ^0.4.0-alpha.4
     "@jupyterlite/services": ^0.8.0
+    "@lumino/disposable": ^2.1.5
+    "@lumino/signaling": ^2.1.5
     npm-run-all2: ^7.0.1
     rimraf: ~5.0.1
     typescript: ~5.0.2
@@ -3029,6 +3031,7 @@ __metadata:
     "@jupyterlab/testutils": ~4.6.0
     "@jupyterlite/services": ^0.8.0
     "@lumino/coreutils": ^2.2.2
+    "@lumino/disposable": ^2.1.5
     "@types/jest": ^26.0.10
     astring: ^1.9.0
     comlink: ^4.3.1

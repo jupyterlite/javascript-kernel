@@ -9,3 +9,4 @@ export * from './runtime_backends';
 export * from './runtime_evaluator';
 export * from './comm';
 export * from './widgets';
+export * from './startup';

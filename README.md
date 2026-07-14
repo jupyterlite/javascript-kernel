@@ -40,6 +40,54 @@ The extension currently registers two JavaScript kernelspecs:
 
 Pick either kernel from the notebook kernel selector in JupyterLite.
 
+### Kernel startup extensions
+
+Frontend extensions can register startup work that runs before user code in
+both runtime modes. Use this to preload runtime modules and register comm
+targets without sending bootstrap code through `requestExecute`.
+
+```typescript
+import type { JupyterFrontEndPlugin } from '@jupyterlab/application';
+import { IJavaScriptKernelStartupRegistry } from '@jupyterlite/javascript-kernel';
+
+const plugin: JupyterFrontEndPlugin<void> = {
+  id: 'my-extension:javascript-startup',
+  autoStart: true,
+  requires: [IJavaScriptKernelStartupRegistry],
+  activate: (app, startup) => {
+    const runtimeBootstrap = new URL(
+      './runtime-bootstrap.js',
+      import.meta.url
+    ).toString();
+    const lspCommTarget = new URL(
+      './lsp-comm-target.js',
+      import.meta.url
+    ).toString();
+
+    startup.registerStartupExtension({
+      id: 'my-extension:lsp',
+      activate: async context => {
+        await context.preloadModule(runtimeBootstrap);
+        await context.registerCommTarget({
+          targetName: 'my-extension:lsp',
+          module: lspCommTarget,
+          exportName: 'registerLspTarget'
+        });
+      },
+      deactivate: async context => {
+        await context.unregisterCommTarget('my-extension:lsp');
+      }
+    });
+  }
+};
+```
+
+`context.registerCommTarget()` imports the module in the kernel runtime and
+passes the exported handler to `Jupyter.comm.registerTarget(targetName,
+handler)`. The default export is used when `exportName` is omitted. Disposing
+a startup registration calls its optional `deactivate` callback for active
+kernels.
+
 ### Worker mode limitations
 
 Web Workers do not expose DOM APIs. In `JavaScript (Web Worker)`, APIs such as `document`, direct element access, and other main-thread-only browser APIs are unavailable.

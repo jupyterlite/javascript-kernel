@@ -59,6 +59,26 @@ export function createRemoteRuntimeApi(
       return ensureEvaluator().execute(code, executionCount, parentMessageId);
     },
 
+    async preloadModule(moduleName: string): Promise<void> {
+      await ensureEvaluator().preloadModule(moduleName);
+    },
+
+    async registerCommTarget(
+      targetName: string,
+      moduleName: string,
+      exportName?: string
+    ): Promise<void> {
+      await ensureEvaluator().registerCommTarget(
+        targetName,
+        moduleName,
+        exportName
+      );
+    },
+
+    async unregisterCommTarget(targetName: string): Promise<void> {
+      ensureEvaluator().unregisterCommTarget(targetName);
+    },
+
     async complete(code: string, cursorPos: number) {
       return ensureEvaluator().complete(code, cursorPos);
     },

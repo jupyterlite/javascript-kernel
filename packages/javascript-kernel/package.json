@@ -47,6 +47,7 @@
     "@jupyterlab/nbformat": "^4.6.0",
     "@jupyterlite/services": "^0.8.0",
     "@lumino/coreutils": "^2.2.2",
+    "@lumino/disposable": "^2.1.5",
     "astring": "^1.9.0",
     "comlink": "^4.3.1",
     "meriyah": "^4.3.9"
