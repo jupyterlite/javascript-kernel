@@ -1,6 +1,6 @@
 {
   "name": "@jupyterlite/javascript-kernel",
-  "version": "0.4.0-alpha.4",
+  "version": "0.4.0-alpha.5",
   "description": "JupyterLite - JavaScript Kernel",
   "homepage": "https://github.com/jupyterlite/javascript-kernel",
   "bugs": {

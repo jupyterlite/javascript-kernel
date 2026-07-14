@@ -2992,7 +2992,7 @@ __metadata:
   dependencies:
     "@jupyter/builder": ^1.0.2
     "@jupyterlab/application": ^4.6.0
-    "@jupyterlite/javascript-kernel": ^0.4.0-alpha.4
+    "@jupyterlite/javascript-kernel": ^0.4.0-alpha.5
     "@jupyterlite/services": ^0.8.0
     "@lumino/disposable": ^2.1.5
     "@lumino/signaling": ^2.1.5
@@ -3020,7 +3020,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@jupyterlite/javascript-kernel@^0.4.0-alpha.4, @jupyterlite/javascript-kernel@workspace:packages/javascript-kernel":
+"@jupyterlite/javascript-kernel@^0.4.0-alpha.5, @jupyterlite/javascript-kernel@workspace:packages/javascript-kernel":
   version: 0.0.0-use.local
   resolution: "@jupyterlite/javascript-kernel@workspace:packages/javascript-kernel"
   dependencies:

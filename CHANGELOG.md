@@ -2,6 +2,30 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.4.0a5
+
+([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/@jupyterlite/javascript-kernel-extension@0.4.0-alpha.4...79f81cdbbd71c41d402a764e06d528836477add3))
+
+### Enhancements made
+
+- Support startup extensions for JavaScript kernels [#29](https://github.com/jupyterlite/javascript-kernel/pull/29) ([@MUFFANUJ](https://github.com/MUFFANUJ), [@jtpio](https://github.com/jtpio), [@krassowski](https://github.com/krassowski))
+
+### Maintenance and upkeep improvements
+
+- Install jupyterlab-widgets for the GitHub Pages deployment [#27](https://github.com/jupyterlite/javascript-kernel/pull/27) ([@jtpio](https://github.com/jtpio), [@bollwyvl](https://github.com/bollwyvl))
+- Update dependencies [#26](https://github.com/jupyterlite/javascript-kernel/pull/26) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2026-05-12&to=2026-07-14&type=c))
+
+@bollwyvl ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Abollwyvl+updated%3A2026-05-12..2026-07-14&type=Issues)) | @jtpio ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2026-05-12..2026-07-14&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Akrassowski+updated%3A2026-05-12..2026-07-14&type=Issues)) | @MUFFANUJ ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3AMUFFANUJ+updated%3A2026-05-12..2026-07-14&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.4.0a4
 
 ([Full Changelog](https://github.com/jupyterlite/javascript-kernel/compare/@jupyterlite/javascript-kernel-extension@0.4.0-alpha.3...70fde687bf34470c7cf3dcf5f154dc6b176fe6b4))
@@ -18,8 +42,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jupyterlite/javascript-kernel/graphs/contributors?from=2026-03-09&to=2026-05-12&type=c))
 
 @bollwyvl ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Abollwyvl+updated%3A2026-03-09..2026-05-12&type=Issues)) | @jtpio ([activity](https://github.com/search?q=repo%3Ajupyterlite%2Fjavascript-kernel+involves%3Ajtpio+updated%3A2026-03-09..2026-05-12&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.4.0a3
 

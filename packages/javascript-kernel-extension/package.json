@@ -1,6 +1,6 @@
 {
   "name": "@jupyterlite/javascript-kernel-extension",
-  "version": "0.4.0-alpha.4",
+  "version": "0.4.0-alpha.5",
   "description": "JupyterLite - JavaScript Kernel Extension",
   "homepage": "https://github.com/jupyterlite/javascript-kernel",
   "bugs": {
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@jupyterlab/application": "^4.6.0",
-    "@jupyterlite/javascript-kernel": "^0.4.0-alpha.4",
+    "@jupyterlite/javascript-kernel": "^0.4.0-alpha.5",
     "@jupyterlite/services": "^0.8.0",
     "@lumino/disposable": "^2.1.5",
     "@lumino/signaling": "^2.1.5"
