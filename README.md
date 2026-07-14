@@ -48,12 +48,12 @@ targets without sending bootstrap code through `requestExecute`.
 
 ```typescript
 import type { JupyterFrontEndPlugin } from '@jupyterlab/application';
-import { IJavaScriptKernelStartup } from '@jupyterlite/javascript-kernel';
+import { IJavaScriptKernelStartupRegistry } from '@jupyterlite/javascript-kernel';
 
 const plugin: JupyterFrontEndPlugin<void> = {
   id: 'my-extension:javascript-startup',
   autoStart: true,
-  requires: [IJavaScriptKernelStartup],
+  requires: [IJavaScriptKernelStartupRegistry],
   activate: (app, startup) => {
     const runtimeBootstrap = new URL(
       './runtime-bootstrap.js',
@@ -66,24 +66,27 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     startup.registerStartupExtension({
       id: 'my-extension:lsp',
-      modulePreloads: [runtimeBootstrap],
-      commTargets: [
-        {
+      activate: async context => {
+        await context.preloadModule(runtimeBootstrap);
+        await context.registerCommTarget({
           targetName: 'my-extension:lsp',
           module: lspCommTarget,
           exportName: 'registerLspTarget'
-        }
-      ]
+        });
+      },
+      deactivate: async context => {
+        await context.unregisterCommTarget('my-extension:lsp');
+      }
     });
   }
 };
 ```
 
-Each `commTargets` entry imports the module in the kernel runtime and passes
-the exported handler to `Jupyter.comm.registerTarget(targetName, handler)`.
-The default export is used when `exportName` is omitted.
-Disposing a startup registration removes declared comm targets from active
-kernels; use an optional `deactivate` callback for extra cleanup.
+`context.registerCommTarget()` imports the module in the kernel runtime and
+passes the exported handler to `Jupyter.comm.registerTarget(targetName,
+handler)`. The default export is used when `exportName` is omitted. Disposing
+a startup registration calls its optional `deactivate` callback for active
+kernels.
 
 ### Worker mode limitations
 

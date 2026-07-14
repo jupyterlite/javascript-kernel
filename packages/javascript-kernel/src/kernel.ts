@@ -299,9 +299,6 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     try {
       await extension.deactivate?.(context);
     } finally {
-      for (const target of extension.commTargets ?? []) {
-        await context.unregisterCommTarget(target.targetName);
-      }
       this._appliedStartupExtensions.delete(extension.id);
     }
   }
@@ -520,30 +517,8 @@ export class JavaScriptKernel extends BaseKernel implements IKernel {
     if (this._appliedStartupExtensions.has(extension.id)) {
       return;
     }
-    const registeredTargets: JavaScriptKernel.IStartupCommTarget[] = [];
-    try {
-      for (const moduleName of extension.modulePreloads ?? []) {
-        await context.preloadModule(moduleName);
-      }
-      for (const target of extension.commTargets ?? []) {
-        await context.registerCommTarget(target);
-        registeredTargets.push(target);
-      }
-      await extension.activate?.(context);
-      this._appliedStartupExtensions.add(extension.id);
-    } catch (error) {
-      for (const target of registeredTargets.reverse()) {
-        try {
-          await context.unregisterCommTarget(target.targetName);
-        } catch (rollbackError) {
-          console.warn(
-            `[javascript-kernel] Failed to rollback comm target "${target.targetName}" for startup extension "${extension.id}".`,
-            rollbackError
-          );
-        }
-      }
-      throw error;
-    }
+    await extension.activate(context);
+    this._appliedStartupExtensions.add(extension.id);
   }
 
   private _unsupportedControlMessages = new Set<'input_reply'>();
@@ -609,9 +584,7 @@ export namespace JavaScriptKernel {
    */
   export interface IStartupExtension {
     id: string;
-    modulePreloads?: readonly string[];
-    commTargets?: readonly IStartupCommTarget[];
-    activate?: (context: IRuntimeReadyContext) => Promise<void> | void;
+    activate: (context: IRuntimeReadyContext) => Promise<void> | void;
     deactivate?: (context: IRuntimeReadyContext) => Promise<void> | void;
   }
 
