@@ -6,6 +6,7 @@ import type { KernelMessage } from '@jupyterlab/services';
 import { JavaScriptExecutor } from './executor';
 import { normalizeError } from './errors';
 import { CommManager } from './comm';
+import type { CommTargetHandler } from './comm';
 import type { RuntimeOutputHandler } from './runtime_protocol';
 import { Widget, createWidgetClasses } from './widgets';
 
@@ -182,7 +183,7 @@ export class JavaScriptRuntimeEvaluator {
         `Comm target ${targetName} must export a handler function`
       );
     }
-    this._commManager.registerTarget(targetName, handler);
+    this._commManager.registerTarget(targetName, handler as CommTargetHandler);
   }
 
   /**
