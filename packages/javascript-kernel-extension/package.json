@@ -24,8 +24,8 @@
   ],
   "scripts": {
     "build": "jlpm build:lib && jlpm build:labextension:dev",
-    "build:labextension": "jupyter labextension build .",
-    "build:labextension:dev": "jupyter labextension build --development True .",
+    "build:labextension": "jupyter-builder build .",
+    "build:labextension:dev": "jupyter-builder build --development True .",
     "build:lib": "tsc -b",
     "build:prod": "jlpm clean && jlpm build:lib && jlpm build:labextension",
     "clean": "jlpm clean:lib",
@@ -35,7 +35,7 @@
     "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
     "install:extension": "jlpm build",
     "watch": "run-p watch:src watch:labextension",
-    "watch:labextension": "jupyter labextension watch .",
+    "watch:labextension": "jupyter-builder watch .",
     "watch:src": "tsc -w"
   },
   "dependencies": {
@@ -46,7 +46,7 @@
     "@lumino/signaling": "^2.1.5"
   },
   "devDependencies": {
-    "@jupyter/builder": "^1.0.2",
+    "@jupyter/builder": "^1.2.0",
     "npm-run-all2": "^7.0.1",
     "rimraf": "~5.0.1",
     "typescript": "~5.0.2"
