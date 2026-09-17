@@ -11998,14 +11998,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minipass@npm:^5.0.0 || ^6.0.2 || ^7.0.0, minipass@npm:^7.0.2, minipass@npm:^7.0.3, minipass@npm:^7.0.4":
-  version: 7.1.1
-  resolution: "minipass@npm:7.1.1"
-  checksum: d2c461947a7530f93de4162aa3ca0a1bed1f121626906f6ec63a5ba05fd7b1d9bee4fe89a37a43db7241c2416be98a799c1796abae583c7180be37be5c392ef6
-  languageName: node
-  linkType: hard
-
-"minipass@npm:^7.1.2, minipass@npm:^7.1.3":
+"minipass@npm:^5.0.0 || ^6.0.2 || ^7.0.0, minipass@npm:^7.0.2, minipass@npm:^7.0.3, minipass@npm:^7.0.4, minipass@npm:^7.1.2, minipass@npm:^7.1.3":
   version: 7.1.3
   resolution: "minipass@npm:7.1.3"
   checksum: 2ede17c0bf8fec499be3360fd07f0ec7666189e3907320a9b653f1530cf84af98928c5b12d80bfb75f321833bf2e97785b940540213ebdafe97a5f10327e664d
@@ -12100,21 +12093,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^3.3.18":
+"nanoid@npm:^3.3.18, nanoid@npm:^3.3.7":
   version: 3.3.19
   resolution: "nanoid@npm:3.3.19"
   bin:
     nanoid: bin/nanoid.cjs
   checksum: 9e7a9c78d81b3778844df795aa17da6fde77825eacee6c6e5776cac0055326d54cc1bfee71ad0a9a1f11556c93a243a63648228e6c6b24ae7d4f75f6d4466a99
-  languageName: node
-  linkType: hard
-
-"nanoid@npm:^3.3.7":
-  version: 3.3.7
-  resolution: "nanoid@npm:3.3.7"
-  bin:
-    nanoid: bin/nanoid.cjs
-  checksum: d36c427e530713e4ac6567d488b489a36582ef89da1d6d4e3b87eded11eb10d7042a877958c6f104929809b2ab0bafa17652b076cdf84324aa75b30b722204f2
   languageName: node
   linkType: hard
 
@@ -13113,7 +13097,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picocolors@npm:^1.0.0, picocolors@npm:^1.1.1":
+"picocolors@npm:^1.1.1":
   version: 1.1.1
   resolution: "picocolors@npm:1.1.1"
   checksum: e1cf46bf84886c79055fdfa9dcb3e4711ad259949e3565154b004b260cd356c5d54b31a1437ce9782624bf766272fe6b0154f5f0c744fb7af5d454d2b60db045
@@ -13274,18 +13258,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.3.11":
-  version: 8.4.38
-  resolution: "postcss@npm:8.4.38"
-  dependencies:
-    nanoid: ^3.3.7
-    picocolors: ^1.0.0
-    source-map-js: ^1.2.0
-  checksum: 649f9e60a763ca4b5a7bbec446a069edf07f057f6d780a5a0070576b841538d1ecf7dd888f2fbfd1f76200e26c969e405aeeae66332e6927dbdc8bdcb90b9451
-  languageName: node
-  linkType: hard
-
-"postcss@npm:^8.4.40":
+"postcss@npm:^8.3.11, postcss@npm:^8.4.40":
   version: 8.5.28
   resolution: "postcss@npm:8.5.28"
   dependencies:
@@ -14148,7 +14121,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:7.5.4, semver@npm:7.x, semver@npm:^7.0.0, semver@npm:^7.1.1, semver@npm:^7.3.2, semver@npm:^7.3.4, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.3.8, semver@npm:^7.5.3, semver@npm:^7.5.4":
+"semver@npm:7.5.4":
   version: 7.5.4
   resolution: "semver@npm:7.5.4"
   dependencies:
@@ -14159,21 +14132,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semver@npm:7.x, semver@npm:^7.0.0, semver@npm:^7.1.1, semver@npm:^7.3.2, semver@npm:^7.3.4, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.3.8, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.3":
+  version: 7.8.5
+  resolution: "semver@npm:7.8.5"
+  bin:
+    semver: bin/semver.js
+  checksum: 0c580f17e88e2b45806dc5cf3d824f719c946999d3554bf30307c2b68b3300ab3c8bfcd84d8f489b93b4cbb5362f5fc8de4d2858954f18d834253c4450fc9f6b
+  languageName: node
+  linkType: hard
+
 "semver@npm:^6.0.0, semver@npm:^6.3.0, semver@npm:^6.3.1":
   version: 6.3.1
   resolution: "semver@npm:6.3.1"
   bin:
     semver: bin/semver.js
   checksum: ae47d06de28836adb9d3e25f22a92943477371292d9b665fb023fae278d345d508ca1958232af086d85e0155aee22e313e100971898bbb8d5d89b8b1d4054ca2
-  languageName: node
-  linkType: hard
-
-"semver@npm:^7.6.3":
-  version: 7.8.5
-  resolution: "semver@npm:7.8.5"
-  bin:
-    semver: bin/semver.js
-  checksum: 0c580f17e88e2b45806dc5cf3d824f719c946999d3554bf30307c2b68b3300ab3c8bfcd84d8f489b93b4cbb5362f5fc8de4d2858954f18d834253c4450fc9f6b
   languageName: node
   linkType: hard
 
@@ -14406,13 +14379,6 @@ __metadata:
   dependencies:
     is-plain-obj: ^1.0.0
   checksum: f0fd827fa9f8f866e98588d2a38c35209afbf1e9a05bb0e4ceeeb8bbf31d923c8902b0a7e0f561590ddb65e58eba6a74f74b991c85360bcc52e83a3f0d1cffd7
-  languageName: node
-  linkType: hard
-
-"source-map-js@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "source-map-js@npm:1.2.0"
-  checksum: 791a43306d9223792e84293b00458bf102a8946e7188f3db0e4e22d8d530b5f80a4ce468eb5ec0bf585443ad55ebbd630bf379c98db0b1f317fd902500217f97
   languageName: node
   linkType: hard
 
