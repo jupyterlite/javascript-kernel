@@ -144,20 +144,20 @@ export class JavaScriptExecutor {
       module: true
     });
 
-    // Add top-level variables to global scope
-    let codeAddToGlobalScope = this._addToGlobalScope(ast);
-
     // Handle last statement / add return if needed
     const { withReturn, modifiedUserCode, extraReturnCode } =
       this._handleLastStatement(code, ast);
-    let finalCode = modifiedUserCode;
 
-    // Handle import statements
-    const importResult = this._rewriteImportStatements(finalCode, ast);
-    finalCode = importResult.modifiedUserCode;
-    codeAddToGlobalScope += importResult.codeAddToGlobalScope;
+    // Handle import statements and top-level declarations
+    const {
+      modifiedUserCode: finalCode,
+      codeAddToGlobalScope,
+      hoistedCode
+    } = this._rewriteTopLevelStatements(modifiedUserCode, ast);
 
-    const combinedCode = `
+    // Put the hoisted code on the first line to keep line numbers. The ";"
+    // stops a "use strict" directive, which would break the assignments
+    const combinedCode = `;${hoistedCode}
       ${finalCode}
       ${codeAddToGlobalScope}
       ${extraReturnCode}
@@ -1051,35 +1051,6 @@ export class JavaScriptExecutor {
   }
 
   /**
-   * Add top-level variables to global scope.
-   */
-  private _addToGlobalScope(ast: any): string {
-    const extraCode: string[] = [];
-
-    for (const node of ast.body) {
-      if (node.type === 'FunctionDeclaration') {
-        const name = node.id.name;
-        extraCode.push(this._addToGlobalThisCode(name));
-      } else if (node.type === 'ClassDeclaration') {
-        const name = node.id.name;
-        extraCode.push(this._addToGlobalThisCode(name));
-      } else if (node.type === 'VariableDeclaration') {
-        const declarations = node.declarations;
-
-        for (const declaration of declarations) {
-          const identifiers: string[] = [];
-          this._collectDeclaredIdentifiers(declaration.id, identifiers);
-          for (const name of identifiers) {
-            extraCode.push(this._addToGlobalThisCode(name));
-          }
-        }
-      }
-    }
-
-    return extraCode.join('\n');
-  }
-
-  /**
    * Collect identifiers from a declaration pattern.
    */
   private _collectDeclaredIdentifiers(
@@ -1117,6 +1088,41 @@ export class JavaScriptExecutor {
       default:
         break;
     }
+  }
+
+  /**
+   * Get the names declared by a function, class or variable declaration.
+   */
+  private _declaredNames(node: any): string[] {
+    const names: string[] = [];
+    if (node.type === 'VariableDeclaration') {
+      for (const declaration of node.declarations) {
+        this._collectDeclaredIdentifiers(declaration.id, names);
+      }
+    } else if (
+      ['FunctionDeclaration', 'ClassDeclaration'].includes(node.type)
+    ) {
+      names.push(node.id.name);
+    }
+    return names;
+  }
+
+  /**
+   * Whether a node declares a global that cannot hold any value, like `name`
+   * or `location`.
+   */
+  private _declaresBuiltinGlobal(node: any): boolean {
+    return this._declaredNames(node).some(name => {
+      let scope = this._globalScope;
+      while (scope) {
+        const descriptor = Object.getOwnPropertyDescriptor(scope, name);
+        if (descriptor) {
+          return descriptor.writable !== true;
+        }
+        scope = Object.getPrototypeOf(scope);
+      }
+      return false;
+    });
   }
 
   /**
@@ -1288,19 +1294,22 @@ export class JavaScriptExecutor {
   }
 
   /**
-   * Rewrite import statements to dynamic imports.
+   * Rewrite import statements to dynamic imports, and top-level declarations
+   * to assignments to the global scope.
    */
-  private _rewriteImportStatements(
+  private _rewriteTopLevelStatements(
     code: string,
     ast: any
   ): {
     modifiedUserCode: string;
     codeAddToGlobalScope: string;
+    hoistedCode: string;
   } {
     let modifiedUserCode = code;
     let codeAddToGlobalScope = '';
+    const hoistedCode: string[] = [];
 
-    // Process imports in reverse order to maintain correct positions
+    // Process statements in reverse order to maintain correct positions
     for (let i = ast.body.length - 1; i >= 0; i--) {
       const node = ast.body[i];
 
@@ -1385,13 +1394,70 @@ export class JavaScriptExecutor {
             newCodeOfNode
           );
         }
+      } else if (this._declaresBuiltinGlobal(node)) {
+        // Keep the declaration local, and copy it at the end like imports
+        for (const name of this._declaredNames(node)) {
+          codeAddToGlobalScope += this._addToGlobalThisCode(name);
+        }
+      } else if (node.type === 'FunctionDeclaration') {
+        // Assign the function before the code runs, using a hoisted factory
+        const factoryName = `__jsKernelFunction${i}`;
+        const functionCode = modifiedUserCode.substring(node.start, node.end);
+        modifiedUserCode = this._replaceCode(
+          modifiedUserCode,
+          node.start,
+          node.end,
+          `function ${factoryName}() { return ${functionCode} }`
+        );
+        hoistedCode.unshift(`${node.id.name} = ${factoryName}();`);
+      } else if (node.type === 'ClassDeclaration') {
+        const classCode = modifiedUserCode.substring(node.start, node.end);
+        modifiedUserCode = this._replaceCode(
+          modifiedUserCode,
+          node.start,
+          node.end,
+          `${node.id.name} = ${classCode};`
+        );
+      } else if (node.type === 'VariableDeclaration') {
+        modifiedUserCode = this._replaceCode(
+          modifiedUserCode,
+          node.start,
+          node.end,
+          this._rewriteVariableDeclaration(modifiedUserCode, node)
+        );
       }
     }
 
     return {
       modifiedUserCode,
-      codeAddToGlobalScope
+      codeAddToGlobalScope,
+      hoistedCode: hoistedCode.join(' ')
     };
+  }
+
+  /**
+   * Rewrite a variable declaration to an assignment, e.g. `let a = 1, b;`
+   * to `a = 1, b = undefined;`.
+   */
+  private _rewriteVariableDeclaration(code: string, node: any): string {
+    const declarations = node.declarations;
+    const lastDeclaration = declarations[declarations.length - 1];
+
+    // Wrap patterns in parentheses, and pad to keep the columns
+    const isPattern = declarations[0].id.type !== 'Identifier';
+    let newCode = (isPattern ? ';(' : '').padEnd(node.kind.length);
+
+    let position = node.start + node.kind.length;
+    for (const declaration of declarations) {
+      if (!declaration.init) {
+        newCode += `${code.substring(position, declaration.end)} = undefined`;
+        position = declaration.end;
+      }
+    }
+    newCode += code.substring(position, lastDeclaration.end);
+    newCode += isPattern ? ')' : '';
+    newCode += code.substring(lastDeclaration.end, node.end);
+    return newCode.endsWith(';') ? newCode : `${newCode};`;
   }
 
   /**
